@@ -840,8 +840,11 @@
   let editingOp=null; // opération en cours d'édition/duplication, null = nouvelle fiche vierge
   const delOpBtn=document.getElementById('delOpBtn');
   const saveOpBtn=document.getElementById('saveOpBtn');
-  function duplicateFrom(op){
+  let formMode='new'; // 'new' | 'edit' | 'duplicate' — pilote ce que fait le bouton Enregistrer
+  function duplicateFrom(op, mode){
+    mode = mode||'edit';
     editingOp=op;
+    formMode=mode;
     const amt=parseFloat(op.dataset.amt), dep=amt<0;
     addAmt.value=Math.abs(amt).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
     setSign(dep);
@@ -855,15 +858,22 @@
     selectChip(parts.length>1?parts[1]:'');
     addSwitches[0].classList.toggle('on',op.classList.contains('pt'));
     addSwitches[1].classList.remove('on');
-    addTitle.textContent='Modifier l’opération';
-    saveOpBtn.textContent='Enregistrer les modifications';
-    delOpBtn.style.display='block';
-    dupOpBtn.style.display='block';
+    if(mode==='duplicate'){
+      addTitle.textContent='Dupliquer l’opération';
+      saveOpBtn.textContent='Enregistrer la copie';
+      delOpBtn.style.display='none';
+      dupOpBtn.style.display='none';
+    } else {
+      addTitle.textContent='Modifier l’opération';
+      saveOpBtn.textContent='Enregistrer les modifications';
+      delOpBtn.style.display='block';
+      dupOpBtn.style.display='block';
+    }
     go('add');
   }
   // bouton + -> nouvelle opération vierge (pas de suppression possible, rien à supprimer)
   document.querySelector('.fab').addEventListener('click',()=>{
-    editingOp=null;
+    editingOp=null; formMode='new';
     addTitle.textContent='Nouvelle opération';
     saveOpBtn.textContent="Enregistrer l'opération";
     addAmt.value='0,00'; setSign(true); addTiers.value='';
@@ -877,7 +887,7 @@
   delOpBtn.addEventListener('click',()=>{
     if(!editingOp) return;
     editingOp.remove();
-    editingOp=null;
+    editingOp=null; formMode='new';
     delOpBtn.style.display='none';
     applyMonthFilter();
     go('ops');
@@ -952,8 +962,8 @@
       b.addEventListener('click',()=>{ closeModal(); cb(); });
       return b;
     };
-    list.appendChild(mkBtn('Modifier', null, ()=>duplicateFrom(op)));
-    list.appendChild(mkBtn('Dupliquer', null, ()=>{ insertNewOp(opToFormData(op), op); applyMonthFilter(); }));
+    list.appendChild(mkBtn('Modifier', null, ()=>duplicateFrom(op,'edit')));
+    list.appendChild(mkBtn('Dupliquer', null, ()=>duplicateFrom(op,'duplicate')));
     list.appendChild(mkBtn('Supprimer', 'var(--neg)', ()=>{ op.remove(); applyMonthFilter(); }));
     modalFields.appendChild(list);
     modalOv.classList.add('on');
@@ -1003,12 +1013,13 @@
     wireOp(op);
     saveCheck(op);
   }
-  // Enregistrer : modifie l'opération d'origine SI on l'a ouverte (editingOp), sinon en crée une nouvelle
+  // Enregistrer : modifie en place (edit), crée une copie à côté (duplicate), ou crée une ligne vierge (new)
   saveOpBtn.addEventListener('click',()=>{
     const f=readOpForm(); if(!f) return;
-    if(editingOp){ updateOpInPlace(editingOp,f); }
+    if(formMode==='duplicate'){ insertNewOp(f, editingOp); }
+    else if(formMode==='edit' && editingOp){ updateOpInPlace(editingOp,f); }
     else{ insertNewOp(f); }
-    editingOp=null;
+    editingOp=null; formMode='new';
     delOpBtn.style.display='none';
     dupOpBtn.style.display='none';
     applyMonthFilter();
@@ -1019,7 +1030,7 @@
   dupOpBtn.addEventListener('click',()=>{
     const f=readOpForm(); if(!f) return;
     insertNewOp(f, editingOp);
-    editingOp=null;
+    editingOp=null; formMode='new';
     delOpBtn.style.display='none';
     dupOpBtn.style.display='none';
     applyMonthFilter();
