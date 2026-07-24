@@ -645,10 +645,19 @@
   // en haut d'Opérations, et les jalons de l'onglet Échéancier. Décocher une échéance
   // se répercute donc partout d'un coup.
   const OPENING=1229.97;  // solde juste avant la 1ère ligne affichée (03/07, réel, calculé depuis le LEDGERBAL OFX)
-  const REEL=102.12;      // solde réel au 24/07, vérifié en direct sur monespace.lcl.fr (OFX 200,28 au 21/07 + 4 débits "en cours") — base de toutes les projections
   const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 
   function futEls(){ return [...document.querySelectorAll('#ledger .op.fut')]; }
+  // solde réel recalculé en direct (toutes les opérations passées, cochées ou non) — jamais figé,
+  // pour que toute opération ajoutée/modifiée à la main (dupliquer, éditer) se répercute partout.
+  function computeReel(){
+    let reel=OPENING;
+    document.querySelectorAll('#ledger .op').forEach(o=>{
+      if(o.classList.contains('fut')) return;
+      reel+=parseFloat(o.dataset.amt);
+    });
+    return reel;
+  }
 
   // mois affiché dans Opérations : ne montre que les lignes de ce mois-là
   const MONTHS=[{id:'2026-07',lbl:'Juil.',end:'2026-07-31'},{id:'2026-08',lbl:'Août',end:'2026-08-31'},{id:'2026-09',lbl:'Sept.',end:'2026-09-30'}];
@@ -675,16 +684,17 @@
   }
 
   function recompute(){
-    let reel=OPENING, pointe=OPENING, prev=REEL;
+    let reel=OPENING, pointe=OPENING;
     const jend=MONTHS[monthIdx].end;
     document.querySelectorAll('#ledger .op').forEach(o=>{
+      if(o.classList.contains('fut')) return;
       const a=parseFloat(o.dataset.amt);
-      if(o.classList.contains('fut')){
-        if(o.classList.contains('pt') && o.dataset.date && o.dataset.date<=jend) prev+=a;
-      } else {
-        reel+=a;                          // solde réel = toutes les opérations passées, cochées ou non
-        if(o.classList.contains('pt')) pointe+=a;  // solde pointé = seulement les rapprochées
-      }
+      reel+=a;                          // solde réel = toutes les opérations passées, cochées ou non
+      if(o.classList.contains('pt')) pointe+=a;  // solde pointé = seulement les rapprochées
+    });
+    let prev=reel;  // le prévu part du solde réel À JOUR, pas d'une valeur figée
+    futEls().forEach(o=>{
+      if(o.classList.contains('pt') && o.dataset.date && o.dataset.date<=jend) prev+=parseFloat(o.dataset.amt);
     });
     document.getElementById('sPointe').textContent=fmt(pointe);
     const pv=document.getElementById('sPrev');
@@ -725,7 +735,7 @@
   const projBal=document.getElementById('projBal');
   const projSub=document.getElementById('projSub');
   function balanceAt(dateStr){
-    let s=REEL, n=0;
+    let s=computeReel(), n=0;
     futEls().forEach(o=>{
       if(!o.classList.contains('pt')) return;
       if(o.dataset.date && o.dataset.date<=dateStr){ s+=parseFloat(o.dataset.amt); n++; }
