@@ -66,19 +66,17 @@
   }
 
   *{box-sizing:border-box;margin:0;padding:0}
-  .wrap{min-height:100vh;background:
-      radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb,var(--brand) 8%, transparent), transparent 60%),
-      var(--bg);
+  html,body{width:100%;overflow-x:hidden}
+  .wrap{min-height:100vh;min-height:100dvh;width:100%;background:var(--bg);
     font-family:var(--sans);color:var(--text);
-    display:flex;flex-direction:column;align-items:center;gap:14px;
-    padding:26px 16px 40px;-webkit-font-smoothing:antialiased;}
-  /* phone */
-  .phone{width:390px;max-width:100%;background:var(--surface);border-radius:30px;
-    box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;position:relative;
-    display:flex;flex-direction:column;height:788px}
+    display:flex;flex-direction:column;align-items:stretch;
+    -webkit-font-smoothing:antialiased;}
+  /* phone (= l'écran réel, plus un cadre de démo) */
+  .phone{width:100%;background:var(--surface);position:relative;
+    display:flex;flex-direction:column;height:100vh;height:100dvh}
 
   /* app bar */
-  .bar{background:var(--bar);color:var(--bar-text);padding:14px 16px 12px;flex:0 0 auto}
+  .bar{background:var(--bar);color:var(--bar-text);padding:calc(14px + env(safe-area-inset-top)) 16px 12px;flex:0 0 auto}
   .bar-top{display:flex;align-items:center;justify-content:space-between}
   .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.2px;font-size:16px}
   .brand .mk{width:22px;height:22px;border-radius:7px;background:var(--brand);display:grid;place-items:center;color:#fff}
@@ -93,7 +91,7 @@
   .tab[aria-selected="true"]{background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(47,107,255,.35)}
 
   /* scroll body */
-  .body{flex:1;overflow-y:auto;background:var(--surface-3);padding:14px 13px 90px}
+  .body{flex:1;overflow-y:auto;background:var(--surface-3);padding:14px 13px calc(90px + env(safe-area-inset-bottom));position:relative}
   .view{display:none;flex-direction:column;gap:12px}
   .view.on{display:flex}
 
@@ -238,10 +236,13 @@
   .rule .arw{color:var(--text-faint)} .rule .to{font-weight:700;margin-left:auto}
 
   /* FAB */
-  .fab{position:absolute;right:16px;bottom:16px;width:52px;height:52px;border-radius:16px;border:0;
+  .fab{position:absolute;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:16px;border:0;
     background:var(--brand);color:#fff;box-shadow:0 8px 22px rgba(47,107,255,.45);cursor:pointer;
     display:grid;place-items:center;z-index:5}
   .note{max-width:390px;width:100%;color:var(--text-faint);font-size:11px;text-align:center;line-height:1.5}
+  #pullIndicator{position:absolute;top:0;left:0;right:0;text-align:center;padding:10px;
+    font:600 12px var(--sans);color:var(--text-dim);background:var(--surface-3);
+    transform:translateY(-100%);pointer-events:none;z-index:15}
   .toggle{max-width:390px;width:100%;display:flex;justify-content:center}
   .toggle button{background:var(--surface);border:1px solid var(--border);color:var(--text-dim);
     border-radius:999px;padding:6px 14px;font:600 12px var(--sans);cursor:pointer;box-shadow:var(--shadow)}
@@ -303,6 +304,7 @@
 
     <!-- BODY -->
     <div class="body">
+      <div id="pullIndicator">↓ Tire pour rafraîchir</div>
 
       <!-- ===== VUE COMPTES ===== -->
       <section class="view on" data-view="comptes">
@@ -482,15 +484,17 @@
         <div class="card">
           <button class="setrow"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span><span class="nm">Importer un relevé</span><span class="val">OFX · CSV · QIF</span><span class="car"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></button>
           <button class="setrow"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15V3m0 0 4 4m-4-4-4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span><span class="nm">Exporter mes données</span><span class="val"></span><span class="car"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></button>
-          <button class="setrow"><span class="ico" style="background:var(--pos-soft);color:var(--pos)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4 3 7 7 9 4-2 7-5 7-9V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></span><span class="nm">Sauvegarde</span><span class="val" style="color:var(--pos)">Supabase · auto</span><span class="dot g" style="margin-left:8px"></span></button>
+          <button class="setrow"><span class="ico" style="background:var(--pending-soft);color:var(--pending)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4 3 7 7 9 4-2 7-5 7-9V6l-7-3Z"/></svg></span><span class="nm">Sauvegarde</span><span class="val" style="color:var(--pending)">Pas encore connectée</span><span class="dot a" style="margin-left:8px"></span></button>
         </div>
+        <p class="note" style="margin-top:-4px">Supabase n'est pas encore branché — pour l'instant, rien n'est sauvegardé entre deux visites. Ça viendra avec le vrai build.</p>
 
         <div class="sec-h"><h3>Application</h3></div>
         <div class="card">
-          <button class="setrow"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></span><span class="nm">Thème</span><span class="val">Système</span><span class="car"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></button>
-          <button class="setrow"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span class="nm">Compte &amp; sécurité</span><span class="val">franxred69@…</span><span class="car"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></button>
+          <button class="setrow" id="reloadBtn"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg></span><span class="nm">Recharger l'appli</span><span class="car"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span></button>
+          <button class="setrow"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z"/></svg></span><span class="nm">Thème<small>Pas encore actif ici — utilise le bouton en bas de l'écran Comptes</small></span></button>
+          <button class="setrow"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span class="nm">Compte &amp; sécurité<small>franxred69@… · pas encore actif</small></span></button>
         </div>
-        <p class="note">La <b>sauvegarde est automatique</b> (Supabase). Plus jamais de fichier à sauver à la main — l'incident Maxicompte ne peut plus se reproduire.</p>
+        <p class="note">Sauvegarde, thème par réglage dédié, compte &amp; sécurité et export arriveront avec le vrai build (Supabase). Ce qui est déjà utilisable aujourd'hui : Comptes, Opérations, Échéancier, ajout/suppression/duplication d'opérations, et cette page.</p>
       </section>
 
       <!-- ===== VUE AJOUTER UNE OPERATION ===== -->
@@ -734,6 +738,34 @@
 
   document.getElementById('gearBtn').addEventListener('click',()=>go('reglages'));
   document.getElementById('backBtn').addEventListener('click',()=>go('comptes'));
+  document.getElementById('reloadBtn').addEventListener('click',()=>location.reload());
+
+  // tirer-vers-le-bas pour rafraîchir (pas de chrome navigateur en PWA installée, donc pas de geste natif)
+  (function(){
+    const body=document.querySelector('.body');
+    const indicator=document.getElementById('pullIndicator');
+    const THRESH=70;
+    let startY=null, pull=0, active=false;
+    body.addEventListener('touchstart',e=>{
+      active = body.scrollTop<=0;
+      startY = active ? e.touches[0].clientY : null;
+    },{passive:true});
+    body.addEventListener('touchmove',e=>{
+      if(!active||startY===null) return;
+      const dy=e.touches[0].clientY-startY;
+      if(dy<=0||body.scrollTop>0){ active=false; return; }
+      pull=Math.min(dy*0.5,90);
+      indicator.style.transform='translateY('+pull+'px)';
+      indicator.textContent = pull>THRESH ? '↑ Relâche pour rafraîchir' : '↓ Tire pour rafraîchir';
+      e.preventDefault();
+    },{passive:false});
+    body.addEventListener('touchend',()=>{
+      if(!active) return;
+      if(pull>THRESH){ indicator.textContent='Actualisation…'; location.reload(); }
+      else { indicator.style.transform='translateY(-100%)'; }
+      active=false; startY=null; pull=0;
+    });
+  })();
 
   // ---- Ajouter / Dupliquer une opération ----
   const addTitle=document.getElementById('addTitle');
