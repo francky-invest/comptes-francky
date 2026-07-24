@@ -596,7 +596,7 @@
 
     </div>
 
-    <button class="fab" aria-label="Ajouter une opération"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="fab" aria-label="Ajouter une opération" style="display:none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 
     <div class="modalOv" id="modalOv">
       <div class="modalCard">
@@ -617,10 +617,12 @@
 <script>
   const tabs=[...document.querySelectorAll('.tab')];
   const views=[...document.querySelectorAll('.view')];
+  const fabBtn=document.querySelector('.fab');
   function go(v){
     tabs.forEach(t=>t.setAttribute('aria-selected', t.dataset.v===v));
     views.forEach(s=>s.classList.toggle('on', s.dataset.view===v));
     document.querySelector('.body').scrollTop=0;
+    fabBtn.style.display = v==='ops' ? 'grid' : 'none';
   }
   tabs.forEach(t=>t.addEventListener('click',()=>go(t.dataset.v)));
 
