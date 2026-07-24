@@ -141,7 +141,10 @@
   .daygrp{padding:7px 14px 5px;font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--text-faint);
     text-transform:uppercase;background:var(--surface-2);border-top:1px solid var(--border)}
   .daygrp:empty{display:none;padding:0;border:0}
-  .op{display:flex;align-items:center;gap:11px;padding:11px 13px;border-top:1px solid var(--border);cursor:pointer}
+  .op{display:flex;align-items:center;gap:8px;padding:11px 13px;border-top:1px solid var(--border);cursor:pointer}
+  .opMenuBtn{border:0;background:transparent;color:var(--text-faint);cursor:pointer;flex:0 0 auto;
+    width:24px;height:36px;display:grid;place-items:center;padding:0}
+  .opMenuBtn:active{color:var(--text)}
   .op:first-child{border-top:0}
   .chk{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--border-strong);flex:0 0 auto;
     display:grid;place-items:center;color:#fff;background:var(--surface-2);cursor:pointer;transition:.15s}
@@ -713,11 +716,7 @@
       }
     });
   }
-  document.querySelectorAll('#ledger .op').forEach(op=>{
-    const chk=op.querySelector('.chk');
-    const toggle=()=>{ op.classList.toggle('pt'); chk.setAttribute('aria-checked', op.classList.contains('pt')); saveCheck(op); recompute(); };
-    chk.addEventListener('click',e=>{e.stopPropagation();toggle();});
-  });
+  document.querySelectorAll('#ledger .op').forEach(op=>wireOp(op));
 
   // solde prévu à une date choisie (hero en haut d'Opérations)
   const projDate=document.getElementById('projDate');
@@ -860,9 +859,6 @@
     dupOpBtn.style.display='block';
     go('add');
   }
-  document.querySelectorAll('#ledger .op').forEach(op=>{
-    op.addEventListener('click',e=>{ if(e.target.closest('.chk')) return; duplicateFrom(op); });
-  });
   // bouton + -> nouvelle opération vierge (pas de suppression possible, rien à supprimer)
   document.querySelector('.fab').addEventListener('click',()=>{
     editingOp=null;
@@ -929,10 +925,51 @@
       +'<span class="mid"><div class="t1">'+f.tiers+'</div><div class="t2">'+f.ddmm+' · '+f.catName+modeBadge+'</div></span>'
       +'<span class="right"><div class="m '+(f.dep?'neg':'pos')+'">'+(f.dep?'−':'+')+Math.abs(f.amt).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div><div class="s"></div></span>';
   }
+  function opToFormData(op){
+    const amt=parseFloat(op.dataset.amt), dep=amt<0;
+    const tiers=op.querySelector('.t1').textContent.trim();
+    const t2=op.querySelector('.t2').cloneNode(true); const mo=t2.querySelector('.mode');
+    const modeTxt=mo?mo.textContent.trim():''; if(mo) mo.remove();
+    const modeVal=['CB','PRL','VIR','CHQ','ESP'].includes(modeTxt)?modeTxt:'CB';
+    const txt=t2.textContent.trim();
+    const parts=txt.split('·').map(s=>s.trim());
+    const catName=parts.length>1?parts[1]:(dep?'Alimentation':'Salaire');
+    let dateVal=op.dataset.date;
+    if(!dateVal){ const dm=txt.match(/(\d{2})\/(\d{2})/); dateVal=dm?'2026-'+dm[2]+'-'+dm[1]:TODAY; }
+    const [y,m,d]=dateVal.split('-');
+    return {dep, amtVal:Math.abs(amt), tiers, catName, dateVal, modeVal, pointee:op.classList.contains('pt'),
+      monthId:y+'-'+m, ddmm:d+'/'+m, amt, isFuture:dateVal>TODAY, icon:CAT_ICONS[catName]||CAT_ICONS['Alimentation']};
+  }
+  function openOpMenu(op){
+    modalTitle.textContent=op.querySelector('.t1').textContent.trim();
+    modalFields.innerHTML=''; modalErr.classList.remove('on'); modalOk.style.display='none'; modalCancel.textContent='Fermer';
+    const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:5px';
+    const mkBtn=(label,color,cb)=>{
+      const b=document.createElement('button'); b.type='button'; b.textContent=label;
+      b.style.cssText='text-align:left;border:0;border-radius:10px;padding:12px 13px;font:600 14px var(--sans);cursor:pointer;background:var(--surface-2);color:'+(color||'var(--text)');
+      b.addEventListener('click',()=>{ closeModal(); cb(); });
+      return b;
+    };
+    list.appendChild(mkBtn('Modifier', null, ()=>duplicateFrom(op)));
+    list.appendChild(mkBtn('Dupliquer', null, ()=>{ insertNewOp(opToFormData(op)); applyMonthFilter(); }));
+    list.appendChild(mkBtn('Supprimer', 'var(--neg)', ()=>{ op.remove(); applyMonthFilter(); }));
+    modalFields.appendChild(list);
+    modalOv.classList.add('on');
+  }
   function wireOp(op){
+    if(!op.querySelector('.opMenuBtn')){
+      const menuBtn=document.createElement('button');
+      menuBtn.type='button'; menuBtn.className='opMenuBtn'; menuBtn.setAttribute('aria-label','Actions');
+      menuBtn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>';
+      menuBtn.addEventListener('click',e=>{ e.stopPropagation(); openOpMenu(op); });
+      op.appendChild(menuBtn);
+    }
     const chk=op.querySelector('.chk');
     chk.addEventListener('click',e=>{ e.stopPropagation(); op.classList.toggle('pt'); chk.setAttribute('aria-checked',op.classList.contains('pt')); saveCheck(op); recompute(); });
-    op.addEventListener('click',e=>{ if(e.target.closest('.chk')) return; duplicateFrom(op); });
+    if(!op.dataset.wired){
+      op.dataset.wired='1';
+      op.addEventListener('click',e=>{ if(e.target.closest('.chk')||e.target.closest('.opMenuBtn')) return; duplicateFrom(op); });
+    }
   }
   function insertNewOp(f){
     const op=document.createElement('div');
@@ -1110,9 +1147,8 @@
     const mclass=amt>=0?'pos':'neg', sign=amt>=0?'+':'−';
     op.innerHTML='<span class="chk" role="checkbox" aria-checked="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L20 6"/></svg></span><span class="cat" style="background:'+iconBg+';color:'+iconColor+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+iconSvg+'</svg></span><span class="mid"><div class="t1">'+title+'</div><div class="t2">'+sub+'<span class="mode">À VENIR</span></div></span><span class="right"><div class="m '+mclass+'">'+sign+eur(Math.abs(amt))+'</div><div class="s"></div></span>';
     grp.after(op);
-    const chk=op.querySelector('.chk');
-    chk.addEventListener('click',e=>{ e.stopPropagation(); op.classList.toggle('pt'); chk.setAttribute('aria-checked',op.classList.contains('pt')); saveCheck(op); recompute(); });
-    op.addEventListener('click',e=>{ if(e.target.closest('.chk')) return; duplicateFrom(op); });
+    wireOp(op);
+    saveCheck(op);
     return true;
   }
   function recomputeRecurTotals(){
