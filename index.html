@@ -240,9 +240,13 @@
     background:var(--brand);color:#fff;box-shadow:0 8px 22px rgba(47,107,255,.45);cursor:pointer;
     display:grid;place-items:center;z-index:5}
   .note{max-width:390px;width:100%;color:var(--text-faint);font-size:11px;text-align:center;line-height:1.5}
-  #pullIndicator{position:absolute;top:0;left:0;right:0;text-align:center;padding:10px;
-    font:600 12px var(--sans);color:var(--text-dim);background:var(--surface-3);
+  #pullIndicator{position:absolute;top:0;left:0;right:0;height:56px;display:flex;
+    align-items:center;justify-content:center;color:var(--text-dim);
     transform:translateY(-100%);pointer-events:none;z-index:15}
+  #pullIcon{transition:transform .1s linear}
+  #pullIcon.ready{color:var(--brand)}
+  #pullIcon.spin{animation:pullspin .7s linear infinite}
+  @keyframes pullspin{to{transform:rotate(360deg)}}
   .toggle{max-width:390px;width:100%;display:flex;justify-content:center}
   .toggle button{background:var(--surface);border:1px solid var(--border);color:var(--text-dim);
     border-radius:999px;padding:6px 14px;font:600 12px var(--sans);cursor:pointer;box-shadow:var(--shadow)}
@@ -304,7 +308,7 @@
 
     <!-- BODY -->
     <div class="body">
-      <div id="pullIndicator">↓ Tire pour rafraîchir</div>
+      <div id="pullIndicator"><svg id="pullIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg></div>
 
       <!-- ===== VUE COMPTES ===== -->
       <section class="view on" data-view="comptes">
@@ -744,6 +748,7 @@
   (function(){
     const body=document.querySelector('.body');
     const indicator=document.getElementById('pullIndicator');
+    const icon=document.getElementById('pullIcon');
     const THRESH=70;
     let startY=null, pull=0, active=false;
     body.addEventListener('touchstart',e=>{
@@ -756,13 +761,14 @@
       if(dy<=0||body.scrollTop>0){ active=false; return; }
       pull=Math.min(dy*0.5,90);
       indicator.style.transform='translateY('+pull+'px)';
-      indicator.textContent = pull>THRESH ? '↑ Relâche pour rafraîchir' : '↓ Tire pour rafraîchir';
+      icon.style.transform='rotate('+Math.min(pull/THRESH,1)*220+'deg)';
+      icon.classList.toggle('ready', pull>THRESH);
       e.preventDefault();
     },{passive:false});
     body.addEventListener('touchend',()=>{
       if(!active) return;
-      if(pull>THRESH){ indicator.textContent='Actualisation…'; location.reload(); }
-      else { indicator.style.transform='translateY(-100%)'; }
+      if(pull>THRESH){ icon.classList.add('spin'); indicator.style.transform='translateY(56px)'; location.reload(); }
+      else { indicator.style.transform='translateY(-100%)'; icon.style.transform=''; icon.classList.remove('ready'); }
       active=false; startY=null; pull=0;
     });
   })();
