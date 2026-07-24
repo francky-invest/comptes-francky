@@ -145,6 +145,8 @@
   .opMenuBtn{border:0;background:transparent;color:var(--text-faint);cursor:pointer;flex:0 0 auto;
     width:24px;height:36px;display:grid;place-items:center;padding:0}
   .opMenuBtn:active{color:var(--text)}
+  .op.flash{animation:opflash 1.4s ease-out}
+  @keyframes opflash{0%{background:var(--brand-soft)}100%{background:transparent}}
   .op:first-child{border-top:0}
   .chk{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--border-strong);flex:0 0 auto;
     display:grid;place-items:center;color:#fff;background:var(--surface-2);cursor:pointer;transition:.15s}
@@ -951,7 +953,7 @@
       return b;
     };
     list.appendChild(mkBtn('Modifier', null, ()=>duplicateFrom(op)));
-    list.appendChild(mkBtn('Dupliquer', null, ()=>{ insertNewOp(opToFormData(op)); applyMonthFilter(); }));
+    list.appendChild(mkBtn('Dupliquer', null, ()=>{ insertNewOp(opToFormData(op), op); applyMonthFilter(); }));
     list.appendChild(mkBtn('Supprimer', 'var(--neg)', ()=>{ op.remove(); applyMonthFilter(); }));
     modalFields.appendChild(list);
     modalOv.classList.add('on');
@@ -971,13 +973,15 @@
       op.addEventListener('click',e=>{ if(e.target.closest('.chk')||e.target.closest('.opMenuBtn')) return; duplicateFrom(op); });
     }
   }
-  function insertNewOp(f){
+  function insertNewOp(f, afterEl){
     const op=document.createElement('div');
     op.className='op'+(f.isFuture?' fut':'')+(f.pointee?' pt':'');
     op.dataset.month=f.monthId; op.dataset.amt=f.amt.toFixed(2);
     if(f.isFuture) op.dataset.date=f.dateVal;
     op.innerHTML=opMarkup(f);
-    if(f.isFuture){
+    if(afterEl && afterEl.isConnected){
+      afterEl.after(op);
+    } else if(f.isFuture){
       const grp=document.querySelector('#ledger .daygrp[data-month="'+f.monthId+'"]');
       if(grp) grp.after(op); else document.getElementById('ledger').appendChild(op);
     } else {
@@ -986,6 +990,9 @@
     }
     wireOp(op);
     saveCheck(op);
+    op.scrollIntoView({block:'center', behavior:'smooth'});
+    op.classList.add('flash');
+    setTimeout(()=>op.classList.remove('flash'), 1400);
     return op;
   }
   function updateOpInPlace(op,f){
@@ -1011,7 +1018,7 @@
   const dupOpBtn=document.getElementById('dupOpBtn');
   dupOpBtn.addEventListener('click',()=>{
     const f=readOpForm(); if(!f) return;
-    insertNewOp(f);
+    insertNewOp(f, editingOp);
     editingOp=null;
     delOpBtn.style.display='none';
     dupOpBtn.style.display='none';
