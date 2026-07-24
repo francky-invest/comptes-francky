@@ -72,9 +72,6 @@
     font-family:var(--sans);color:var(--text);
     display:flex;flex-direction:column;align-items:center;gap:14px;
     padding:26px 16px 40px;-webkit-font-smoothing:antialiased;}
-  .kicker{max-width:390px;width:100%;text-align:center;color:var(--text-dim);font-size:12.5px;line-height:1.5}
-  .kicker b{color:var(--text)}
-
   /* phone */
   .phone{width:390px;max-width:100%;background:var(--surface);border-radius:30px;
     box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;position:relative;
@@ -287,8 +284,6 @@
 </style>
 
 <div class="wrap">
-  <p class="kicker"><b>Comptes Francky</b> — maquette mobile · style « Comptes et Budget », charte bleu / anthracite, sans graphiques.<br><b>Tes vraies données</b> : 06/07→21/07 viennent de l'OFX (200,28 €), + 4 débits « en cours de traitement » vérifiés en direct sur monespace.lcl.fr → <b>solde réel 102,12 €</b>, identique à ta banque. Coche/décoche une opération pour voir le <b>solde pointé</b> bouger partout dans l'appli.</p>
-
   <div class="phone">
     <!-- APP BAR -->
     <div class="bar">
@@ -617,7 +612,6 @@
   </div>
 
   <div class="toggle"><button id="themebtn">Basculer clair / sombre</button></div>
-  <p class="note">Maquette non fonctionnelle, alimentée par tes vraies données LCL — sert à valider la <b>disposition</b> et la charte avant de coder (PWA + Supabase).</p>
 </div>
 
 <script>
