@@ -692,9 +692,29 @@
     updateProj();
     updateMiles();
   }
+  // mémorise l'état coché/décoché entre deux visites (pas de Supabase pour l'instant -> localStorage)
+  function opKey(op){ return (op.dataset.date||'')+'|'+op.dataset.amt+'|'+(op.querySelector('.t1')?.textContent.trim()||''); }
+  function loadChecks(){ try{ return JSON.parse(localStorage.getItem('cf_checks')||'{}'); }catch(e){ return {}; } }
+  function saveCheck(op){
+    const checks=loadChecks();
+    checks[opKey(op)]=op.classList.contains('pt');
+    try{ localStorage.setItem('cf_checks', JSON.stringify(checks)); }catch(e){}
+  }
+  function restoreChecks(){
+    const checks=loadChecks();
+    document.querySelectorAll('#ledger .op').forEach(op=>{
+      const k=opKey(op);
+      if(Object.prototype.hasOwnProperty.call(checks,k)){
+        const on=checks[k];
+        op.classList.toggle('pt', on);
+        const chk=op.querySelector('.chk');
+        if(chk) chk.setAttribute('aria-checked', on);
+      }
+    });
+  }
   document.querySelectorAll('#ledger .op').forEach(op=>{
     const chk=op.querySelector('.chk');
-    const toggle=()=>{ op.classList.toggle('pt'); chk.setAttribute('aria-checked', op.classList.contains('pt')); recompute(); };
+    const toggle=()=>{ op.classList.toggle('pt'); chk.setAttribute('aria-checked', op.classList.contains('pt')); saveCheck(op); recompute(); };
     chk.addEventListener('click',e=>{e.stopPropagation();toggle();});
   });
 
@@ -731,6 +751,7 @@
   }
   milesEls.forEach(m=>m.addEventListener('click',()=>{ projDate.value=m.dataset.date; go('ops'); updateProj(); updateMiles(); }));
 
+  restoreChecks(); // reprend les cases cochées/décochées de la dernière visite (localStorage)
   applyMonthFilter(); // filtre sur le mois courant + calcule pointé/prévu + solde à date + jalons
 
   // theme toggle
@@ -987,7 +1008,7 @@
     op.innerHTML='<span class="chk" role="checkbox" aria-checked="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L20 6"/></svg></span><span class="cat" style="background:'+iconBg+';color:'+iconColor+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+iconSvg+'</svg></span><span class="mid"><div class="t1">'+title+'</div><div class="t2">'+sub+'<span class="mode">À VENIR</span></div></span><span class="right"><div class="m '+mclass+'">'+sign+eur(Math.abs(amt))+'</div><div class="s"></div></span>';
     grp.after(op);
     const chk=op.querySelector('.chk');
-    chk.addEventListener('click',e=>{ e.stopPropagation(); op.classList.toggle('pt'); chk.setAttribute('aria-checked',op.classList.contains('pt')); recompute(); });
+    chk.addEventListener('click',e=>{ e.stopPropagation(); op.classList.toggle('pt'); chk.setAttribute('aria-checked',op.classList.contains('pt')); saveCheck(op); recompute(); });
     op.addEventListener('click',e=>{ if(e.target.closest('.chk')) return; duplicateFrom(op); });
     return true;
   }
