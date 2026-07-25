@@ -1089,6 +1089,9 @@
         input=document.createElement('input');
         input.type=f.type||'text';
         if(f.placeholder) input.placeholder=f.placeholder;
+        // sélectionne tout au tap/clic : évite d'avoir à effacer la valeur par défaut à la main
+        input.addEventListener('focus',()=>input.select());
+        input.addEventListener('mouseup',e=>e.preventDefault());
       }
       input.id='mf_'+f.key;
       if(f.value!==undefined) input.value=f.value;
