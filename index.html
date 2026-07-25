@@ -1009,8 +1009,7 @@
     if(afterEl && afterEl.isConnected){
       afterEl.after(op);
     } else if(f.isFuture){
-      const grp=document.querySelector('#ledger .daygrp[data-month="'+f.monthId+'"]');
-      if(grp) grp.after(op); else document.getElementById('ledger').appendChild(op);
+      if(!insertIntoMonth(f.monthId, f.dateVal, op)) document.getElementById('ledger').appendChild(op);
     } else {
       const firstDaygrp=document.querySelector('#ledger .daygrp');
       if(firstDaygrp) firstDaygrp.before(op); else document.getElementById('ledger').appendChild(op);
@@ -1181,15 +1180,25 @@
   const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   const ddmm=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
   const eur=v=>v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  function insertFutureOp(monthId,isoDate,amt,title,sub,iconBg,iconColor,iconSvg){
+  // insère `op` au bon endroit chronologique parmi les échéances déjà listées pour ce mois
+  // (au lieu de toujours la mettre en première position du mois)
+  function insertIntoMonth(monthId,isoDate,op){
     const grp=document.querySelector('#ledger .daygrp[data-month="'+monthId+'"]');
     if(!grp) return false;
+    let ref=grp.nextElementSibling;
+    while(ref && ref.classList.contains('op') && ref.dataset.month===monthId && ref.dataset.date && ref.dataset.date<=isoDate){
+      ref=ref.nextElementSibling;
+    }
+    if(ref) ref.before(op); else document.getElementById('ledger').appendChild(op);
+    return true;
+  }
+  function insertFutureOp(monthId,isoDate,amt,title,sub,iconBg,iconColor,iconSvg){
     const op=document.createElement('div');
     op.className='op fut pt';
     op.dataset.month=monthId; op.dataset.amt=amt.toFixed(2); op.dataset.date=isoDate;
     const mclass=amt>=0?'pos':'neg', sign=amt>=0?'+':'−';
     op.innerHTML='<span class="chk" role="checkbox" aria-checked="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L20 6"/></svg></span><span class="cat" style="background:'+iconBg+';color:'+iconColor+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+iconSvg+'</svg></span><span class="mid"><div class="t1">'+title+'</div><div class="t2">'+sub+'<span class="mode">À VENIR</span></div></span><span class="right"><div class="m '+mclass+'">'+sign+eur(Math.abs(amt))+'</div><div class="s"></div></span>';
-    grp.after(op);
+    if(!insertIntoMonth(monthId,isoDate,op)) return false;
     wireOp(op);
     saveCheck(op);
     return true;
