@@ -1049,6 +1049,18 @@
   }
   // Enregistrer : modifie en place (edit), crée une copie à côté (duplicate), ou crée une ligne vierge (new)
   saveOpBtn.addEventListener('click',()=>{
+    // "Opération récurrente" coché sur une nouvelle saisie -> crée une vraie échéance récurrente
+    // (indéfinie) plutôt qu'une simple opération isolée, en reprenant tiers/montant/catégorie/date.
+    if(formMode==='new' && addSwitches[1].classList.contains('on')){
+      const f=readOpForm(); if(!f) return;
+      const v={nom:f.tiers, sens:f.dep?'exp':'inc', categorie:f.catName, montant:String(f.amtVal), date1:f.dateVal, duree:'indef', nmois:'3'};
+      const result=applyRecurrenceForm(v,null);
+      if(result!==true){ alert(result); return; }
+      editingOp=null; formMode='new';
+      delOpBtn.style.display='none'; dupOpBtn.style.display='none';
+      go('echeancier');
+      return;
+    }
     const f=readOpForm(); if(!f) return;
     if(formMode==='duplicate'){ insertNewOp(f, editingOp); }
     else if(formMode==='edit' && editingOp){ updateOpInPlace(editingOp,f); }
