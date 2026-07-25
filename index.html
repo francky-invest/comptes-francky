@@ -1104,6 +1104,8 @@
           input.type=f.type||'text';
         }
         if(f.placeholder) input.placeholder=f.placeholder;
+        if(f.min!==undefined) input.min=f.min;
+        if(f.max!==undefined) input.max=f.max;
         selectAllOnFocus(input);
       }
       input.id='mf_'+f.key;
@@ -1223,7 +1225,7 @@
       {key:'categorie', label:'Catégorie', type:'select', options:Object.keys(CAT_ICONS).map(c=>({value:c,label:c})), value:'Achat éch.'},
       {key:'montant', label:'Montant de chaque échéance (€)', type:'number', value:'25'},
       {key:'nfois', label:'Nombre de fois', type:'number', inputmode:'numeric', value:'4'},
-      {key:'date1', label:'Date de la 1ère échéance', type:'date', value:'2026-08-07'}
+      {key:'date1', label:'Date de la 1ère échéance', type:'date', min:'2026-07-24', value:'2026-08-07'}
     ], v=>{
       const preteur=v.preteur.trim(), marchand=v.marchand.trim();
       if(!preteur) return 'Indique le prêteur.';
@@ -1274,7 +1276,7 @@
     {key:'sens', label:'Sens', type:'select', options:[{value:'exp',label:'Charge (dépense)'},{value:'inc',label:'Revenu'}]},
     {key:'categorie', label:'Catégorie', type:'select', options:Object.keys(CAT_ICONS).map(c=>({value:c,label:c}))},
     {key:'montant', label:'Montant (€)', type:'number', value:'10'},
-    {key:'jour', label:'Jour du mois (1-28)', type:'number', inputmode:'numeric', value:'1'},
+    {key:'date1', label:'Date de la 1ère échéance', type:'date', min:'2026-07-24', value:'2026-07-24'},
     {key:'duree', label:'Durée', type:'select', options:[{value:'indef',label:'Indéfinie'},{value:'once',label:'Une seule fois'},{value:'limitee',label:'Limitée à un nombre de mois'}]},
     {key:'nmois', label:'Si limitée : nombre de mois', type:'number', inputmode:'numeric', value:'3'}
   ];
@@ -1289,8 +1291,9 @@
     if(!nom) return 'Donne un nom à l\'échéance.';
     const montant=parseFloat((v.montant||'').replace(',','.'));
     if(!montant||montant<=0) return 'Montant invalide.';
-    let jour=parseInt(v.jour,10);
-    if(!jour||jour<1) jour=1; if(jour>28) jour=28;
+    const dm=(v.date1||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!dm) return 'Choisis la date de la 1ère échéance.';
+    const startYear=parseInt(dm[1],10), startMonth0=parseInt(dm[2],10)-1, jour=parseInt(dm[3],10);
     const isRevenu=v.sens==='inc';
     const amt=isRevenu?montant:-montant;
     const duree=v.duree;
@@ -1305,7 +1308,7 @@
     row.className='setrow';
     row.innerHTML='<span class="ico" style="background:'+icon.bg+';color:'+icon.color+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+icon.svg+'</svg></span><span class="nm">'+nom+'<small>'+catName+' · '+(duree==='indef'?'le '+jour:'le '+jour+' · '+durTxt)+'</small></span><span class="val" style="color:'+col+';font-weight:700">'+(isRevenu?'+':'−')+eur(montant)+'</span><span class="switch on swset" role="switch" aria-checked="true"></span>';
     row.dataset.nom=nom; row.dataset.sens=v.sens; row.dataset.categorie=catName;
-    row.dataset.montant=montant; row.dataset.jour=jour; row.dataset.duree=duree; row.dataset.nmois=nmois;
+    row.dataset.montant=montant; row.dataset.date1=v.date1; row.dataset.duree=duree; row.dataset.nmois=nmois;
 
     const targetCard=document.getElementById(isRevenu?'recurIncCard':'recurExpCard');
     if(row.parentElement!==targetCard) targetCard.appendChild(row);
@@ -1314,21 +1317,17 @@
     recomputeRecurTotals();
 
     if(oldName) removeRecurFutureOps(oldName);
-    // injecte les prochaines occurrences dans Opérations, dans la limite de la durée choisie
-    // et de la fenêtre modélisée (juillet->mi-septembre 2026)
-    const today=new Date(2026,6,24);
+    // injecte les occurrences à partir de la date choisie (peut tomber dans le mois en cours),
+    // dans la limite de la durée choisie et de la fenêtre modélisée (juillet->mi-septembre 2026)
     const MONTH_IDS=MONTHS.map(m=>m.id);
-    const maxOcc = duree==='once' ? 1 : duree==='limitee' ? nmois : Infinity;
-    let count=0;
-    MONTH_IDS.forEach(monthId=>{
-      if(count>=maxOcc) return;
-      const [y,m]=monthId.split('-').map(Number);
-      const dt=new Date(y,m-1,jour);
-      if(dt<today) return;
-      count++;
-      const isoDate=iso(dt);
+    const maxOcc = duree==='once' ? 1 : duree==='limitee' ? nmois : 14;
+    for(let i=0;i<maxOcc;i++){
+      const total=startMonth0+i, y=startYear+Math.floor(total/12), m=((total%12)+12)%12;
+      const dt=new Date(y,m,jour);
+      const isoDate=iso(dt), monthId=isoDate.slice(0,7);
+      if(!MONTH_IDS.includes(monthId)) continue;
       insertFutureOp(monthId,isoDate,amt,nom,ddmm(dt)+' · '+catName,icon.bg,icon.color,icon.svg);
-    });
+    }
     applyMonthFilter();
     return true;
   }
