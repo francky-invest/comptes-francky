@@ -134,6 +134,15 @@
     border-radius:11px;padding:9px 12px;box-shadow:var(--shadow);font-size:13px;font-weight:600;color:var(--text);
     cursor:pointer;min-height:38px}
   .step .car{color:var(--text-faint)}
+  .searchsort{display:flex;gap:8px;align-items:center}
+  .searchbox{flex:1;display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);
+    border-radius:11px;padding:0 12px;box-shadow:var(--shadow);color:var(--text-faint);min-height:38px}
+  .searchbox input{border:0;background:transparent;color:var(--text);font:500 16px var(--sans);width:100%;padding:9px 0}
+  .searchbox input:focus{outline:none}
+  #opSort{flex:0 0 auto;background:var(--surface);border:1px solid var(--border);border-radius:11px;
+    padding:0 10px;box-shadow:var(--shadow);color:var(--text);font:600 13px var(--sans);min-height:38px;cursor:pointer}
+  .op.searchhide{display:none}
+  .daygrp.sorthide{display:none}
   .step:active{background:var(--surface-3)}
 
   /* ledger */
@@ -352,6 +361,19 @@
         <div class="filt">
           <div class="pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 21h18M4 10h16M5 10 12 4l7 6M6 10v11M18 10v11"/></svg>Compte courant LCL<span class="car"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div>
           <button class="step" id="monthPicker" aria-label="Choisir un mois"><span id="monthLbl">Juil.</span><span class="car"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></button>
+        </div>
+
+        <div class="searchsort">
+          <div class="searchbox">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="opSearch" type="text" placeholder="Rechercher un tiers…">
+          </div>
+          <select id="opSort" aria-label="Trier">
+            <option value="date">Date</option>
+            <option value="name">Nom A→Z</option>
+            <option value="amtDesc">Montant ↓</option>
+            <option value="amtAsc">Montant ↑</option>
+          </select>
         </div>
 
         <div class="card ledger" id="ledger">
@@ -761,6 +783,39 @@
 
   restoreChecks(); // reprend les cases cochées/décochées de la dernière visite (localStorage)
   applyMonthFilter(); // filtre sur le mois courant + calcule pointé/prévu + solde à date + jalons
+
+  // recherche + tri des opérations (Date/Nom/Montant) — le tri par nom/montant casse l'ordre
+  // chronologique attendu par insertIntoMonth, donc on mémorise cet ordre avant de le perturber
+  // pour pouvoir y revenir proprement en repassant sur "Date".
+  const opSearch=document.getElementById('opSearch');
+  const opSort=document.getElementById('opSort');
+  let chronoOrder=null;
+  function applySearchSort(){
+    const q=opSearch.value.trim().toLowerCase();
+    document.querySelectorAll('#ledger .op').forEach(op=>{
+      const t1=(op.querySelector('.t1')?.textContent||'').toLowerCase();
+      op.classList.toggle('searchhide', !!q && !t1.includes(q));
+    });
+    const mode=opSort.value;
+    const ledger=document.getElementById('ledger');
+    if(mode==='date'){
+      if(chronoOrder) chronoOrder.forEach(op=>{ if(op.isConnected) ledger.appendChild(op); });
+      document.querySelectorAll('#ledger .daygrp').forEach(g=>g.classList.remove('sorthide'));
+    } else {
+      if(!chronoOrder) chronoOrder=[...document.querySelectorAll('#ledger .op')];
+      document.querySelectorAll('#ledger .daygrp').forEach(g=>g.classList.add('sorthide'));
+      const ops=[...document.querySelectorAll('#ledger .op')];
+      ops.sort((a,b)=>{
+        if(mode==='name') return (a.querySelector('.t1').textContent).localeCompare(b.querySelector('.t1').textContent);
+        if(mode==='amtDesc') return parseFloat(b.dataset.amt)-parseFloat(a.dataset.amt);
+        if(mode==='amtAsc') return parseFloat(a.dataset.amt)-parseFloat(b.dataset.amt);
+        return 0;
+      });
+      ops.forEach(op=>ledger.appendChild(op));
+    }
+  }
+  opSearch.addEventListener('input',applySearchSort);
+  opSort.addEventListener('change',applySearchSort);
 
   // theme toggle
   document.getElementById('themebtn').addEventListener('click',()=>{
