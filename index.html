@@ -1220,6 +1220,7 @@
     openModal('Nouvel achat en plusieurs fois',[
       {key:'preteur', label:'Prêteur (qui prélève réellement)', type:'text', placeholder:'Ex. PayPal, Klarna, Cofidis', value:'PayPal'},
       {key:'marchand', label:'Marchand (ce que tu as acheté)', type:'text', placeholder:'Ex. VETDEPRO'},
+      {key:'categorie', label:'Catégorie', type:'select', options:Object.keys(CAT_ICONS).map(c=>({value:c,label:c})), value:'Achat éch.'},
       {key:'montant', label:'Montant de chaque échéance (€)', type:'number', value:'25'},
       {key:'nfois', label:'Nombre de fois', type:'number', inputmode:'numeric', value:'4'},
       {key:'date1', label:'Date de la 1ère échéance', type:'date', value:'2026-08-07'}
@@ -1235,6 +1236,8 @@
       if(!dm) return 'Choisis une date.';
       const year=parseInt(dm[1],10), month0=parseInt(dm[2],10)-1, day=parseInt(dm[3],10);
       const tiers=preteur+' · '+marchand;
+      const catName=v.categorie||'Achat éch.';
+      const icon=CAT_ICONS[catName]||CAT_ICONS['Achat éch.'];
 
       const dates=[];
       for(let i=0;i<n;i++){
@@ -1242,7 +1245,7 @@
         dates.push(new Date(y,m,day));
       }
       const row=document.createElement('div'); row.className='setrow';
-      row.innerHTML='<span class="ico" style="background:#F6E2EF;color:#b5548f"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span><span class="nm">'+tiers+' · Paiement en '+n+'×<small>0/'+n+' payés · reste '+eur(montant*n)+' € · prochaine le '+ddmm(dates[0])+'</small></span><span class="val" style="color:var(--neg);font-weight:700">−'+eur(montant)+'</span><span class="switch on swset" role="switch" aria-checked="true"></span>';
+      row.innerHTML='<span class="ico" style="background:'+icon.bg+';color:'+icon.color+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+icon.svg+'</svg></span><span class="nm">'+tiers+' · Paiement en '+n+'×<small>'+catName+' · 0/'+n+' payés · reste '+eur(montant*n)+' € · prochaine le '+ddmm(dates[0])+'</small></span><span class="val" style="color:var(--neg);font-weight:700">−'+eur(montant)+'</span><span class="switch on swset" role="switch" aria-checked="true"></span>';
       document.getElementById('achatsEchCard').appendChild(row);
       wireSwitch(row.querySelector('.switch'));
 
@@ -1251,7 +1254,7 @@
       dates.forEach((dt,i)=>{
         const isoDate=iso(dt), monthId=isoDate.slice(0,7);
         if(!MONTH_IDS.includes(monthId)) return;
-        const ok=insertFutureOp(monthId,isoDate,-montant,tiers+' · '+(i+1)+'/'+n,ddmm(dt)+' · Achat en '+n+'×','#F6E2EF','#b5548f','<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>');
+        const ok=insertFutureOp(monthId,isoDate,-montant,tiers+' · '+(i+1)+'/'+n,ddmm(dt)+' · '+catName,icon.bg,icon.color,icon.svg);
         if(ok) injected++;
       });
       applyMonthFilter();
