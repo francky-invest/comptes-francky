@@ -979,11 +979,27 @@
       b.addEventListener('click',()=>{ closeModal(); cb(); });
       return b;
     };
-    list.appendChild(mkBtn('Modifier', null, ()=>duplicateFrom(op,'edit')));
+    // si cette échéance à venir vient d'une récurrence, propose de modifier/supprimer
+    // seulement cette occurrence, ou l'échéance entière (toutes les occurrences)
+    const recurRow = op.classList.contains('fut') ? findRecurRowForOp(op) : null;
+
+    list.appendChild(mkBtn(recurRow?'Modifier cette occurrence':'Modifier', null, ()=>duplicateFrom(op,'edit')));
+    if(recurRow) list.appendChild(mkBtn('Modifier toutes les occurrences', null, ()=>openRecurEditForm(recurRow)));
     list.appendChild(mkBtn('Dupliquer', null, ()=>duplicateFrom(op,'duplicate')));
-    list.appendChild(mkBtn('Supprimer', 'var(--neg)', ()=>{ op.remove(); applyMonthFilter(); }));
+    list.appendChild(mkBtn(recurRow?'Supprimer cette occurrence':'Supprimer', 'var(--neg)', ()=>{ op.remove(); applyMonthFilter(); }));
+    if(recurRow) list.appendChild(mkBtn('Supprimer toutes les occurrences', 'var(--neg)', ()=>{
+      const name=recurRowName(recurRow);
+      recurRow.remove();
+      removeRecurFutureOps(name);
+      recomputeRecurTotals();
+      applyMonthFilter();
+    }));
     modalFields.appendChild(list);
     modalOv.classList.add('on');
+  }
+  function findRecurRowForOp(op){
+    const t1=op.querySelector('.t1').textContent.trim();
+    return [...document.querySelectorAll('#recurIncCard .setrow, #recurExpCard .setrow')].find(r=>recurRowName(r)===t1);
   }
   function wireOp(op){
     if(!op.querySelector('.opMenuBtn')){
