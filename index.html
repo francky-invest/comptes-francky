@@ -540,12 +540,11 @@
           </div>
           <div class="field"><label>Commentaire</label><input placeholder="Optionnel"></div>
           <label class="swrow">Pointée (rapprochée avec la banque)<span class="switch"></span></label>
-          <label class="swrow">Opération récurrente<span class="switch"></span></label>
         </div>
         <button class="savebtn" id="saveOpBtn">Enregistrer l'opération</button>
         <button class="savebtn ghost" id="dupOpBtn" style="display:none">Dupliquer en nouvelle opération</button>
         <button class="savebtn ghost" id="delOpBtn" style="display:none;color:var(--neg);border-color:var(--neg)">Supprimer cette opération</button>
-        <p class="note">Active « récurrente » pour qu'elle se répète et alimente la <b>projection</b>. <b>Enregistrer</b> corrige l'opération ouverte · <b>Dupliquer</b> en ajoute une copie sans y toucher · <b>Supprimer</b> la retire.</p>
+        <p class="note"><b>Enregistrer</b> corrige l'opération ouverte · <b>Dupliquer</b> en ajoute une copie sans y toucher · <b>Supprimer</b> la retire. Pour une échéance qui se répète, utilise <b>+ Nouvelle échéance récurrente</b> dans l'onglet Échéancier.</p>
       </section>
       <!-- ===== VUE IMPORT ===== -->
       <section class="view" data-view="import">
@@ -876,7 +875,6 @@
     const parts=txt.split('·').map(s=>s.trim());
     selectChip(parts.length>1?parts[1]:'');
     addSwitches[0].classList.toggle('on',op.classList.contains('pt'));
-    addSwitches[1].classList.remove('on');
     if(mode==='duplicate'){
       addTitle.textContent='Dupliquer l’opération';
       saveOpBtn.textContent='Enregistrer la copie';
@@ -1049,18 +1047,6 @@
   }
   // Enregistrer : modifie en place (edit), crée une copie à côté (duplicate), ou crée une ligne vierge (new)
   saveOpBtn.addEventListener('click',()=>{
-    // "Opération récurrente" coché sur une nouvelle saisie -> crée une vraie échéance récurrente
-    // (indéfinie) plutôt qu'une simple opération isolée, en reprenant tiers/montant/catégorie/date.
-    if(formMode==='new' && addSwitches[1].classList.contains('on')){
-      const f=readOpForm(); if(!f) return;
-      const v={nom:f.tiers, sens:f.dep?'exp':'inc', categorie:f.catName, montant:String(f.amtVal), date1:f.dateVal, duree:'indef', nmois:'3'};
-      const result=applyRecurrenceForm(v,null);
-      if(result!==true){ alert(result); return; }
-      editingOp=null; formMode='new';
-      delOpBtn.style.display='none'; dupOpBtn.style.display='none';
-      go('echeancier');
-      return;
-    }
     const f=readOpForm(); if(!f) return;
     if(formMode==='duplicate'){ insertNewOp(f, editingOp); }
     else if(formMode==='edit' && editingOp){ updateOpInPlace(editingOp,f); }
