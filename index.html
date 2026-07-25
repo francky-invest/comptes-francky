@@ -1087,7 +1087,14 @@
         f.options.forEach(o=>{ const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; input.appendChild(opt); });
       } else {
         input=document.createElement('input');
-        input.type=f.type||'text';
+        if(f.type==='number'){
+          // type=text + inputmode plutôt que type=number : Safari iOS n'autorise pas la
+          // sélection programmée (.select()) sur les champs number, seulement sur du texte.
+          input.type='text';
+          input.inputMode=f.inputmode||'decimal';
+        } else {
+          input.type=f.type||'text';
+        }
         if(f.placeholder) input.placeholder=f.placeholder;
         // sélectionne tout au tap/clic : évite d'avoir à effacer la valeur par défaut à la main
         input.addEventListener('focus',()=>input.select());
@@ -1198,7 +1205,7 @@
       {key:'preteur', label:'Prêteur (qui prélève réellement)', type:'text', placeholder:'Ex. PayPal, Klarna, Cofidis', value:'PayPal'},
       {key:'marchand', label:'Marchand (ce que tu as acheté)', type:'text', placeholder:'Ex. VETDEPRO'},
       {key:'montant', label:'Montant de chaque échéance (€)', type:'number', value:'25'},
-      {key:'nfois', label:'Nombre de fois', type:'number', value:'4'},
+      {key:'nfois', label:'Nombre de fois', type:'number', inputmode:'numeric', value:'4'},
       {key:'date1', label:'Date de la 1ère échéance', type:'date', value:'2026-08-07'}
     ], v=>{
       const preteur=v.preteur.trim(), marchand=v.marchand.trim();
@@ -1276,9 +1283,9 @@
       {key:'nom', label:'Nom', type:'text', placeholder:'Ex. Netflix, loyer garage…'},
       {key:'sens', label:'Sens', type:'select', options:[{value:'exp',label:'Charge (dépense)'},{value:'inc',label:'Revenu'}]},
       {key:'montant', label:'Montant (€)', type:'number', value:'10'},
-      {key:'jour', label:'Jour du mois (1-28)', type:'number', value:'1'},
+      {key:'jour', label:'Jour du mois (1-28)', type:'number', inputmode:'numeric', value:'1'},
       {key:'duree', label:'Durée', type:'select', options:[{value:'indef',label:'Indéfinie'},{value:'once',label:'Une seule fois'},{value:'limitee',label:'Limitée à un nombre de mois'}]},
-      {key:'nmois', label:'Si limitée : nombre de mois', type:'number', value:'3'}
+      {key:'nmois', label:'Si limitée : nombre de mois', type:'number', inputmode:'numeric', value:'3'}
     ], v=>{
       const nom=v.nom.trim();
       if(!nom) return 'Donne un nom à l\'échéance.';
