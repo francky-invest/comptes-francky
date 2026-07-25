@@ -461,13 +461,8 @@
           <div class="setrow"><span class="ico" style="background:#EDE9FE;color:#6d4fd6"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m10 9 5 3-5 3V9Z"/></svg></span><span class="nm">Claude (Anthropic)<small>Mensuel · le 29</small></span><span class="val" style="color:var(--neg);font-weight:700">−23,66</span><span class="switch on swset" role="switch" aria-checked="true"></span></div>
           <div class="setrow"><span class="ico" style="background:#EDE9FE;color:#6d4fd6"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m10 9 5 3-5 3V9Z"/></svg></span><span class="nm">Spotify<small>Mensuel · le 7</small></span><span class="val" style="color:var(--neg);font-weight:700">−12,14</span><span class="switch on swset" role="switch" aria-checked="true"></span></div>
           <div class="setrow"><span class="ico" style="background:var(--surface-3);color:var(--text-dim)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg></span><span class="nm">Assurances LCL<small>Mensuel · le 19 · 3,00 + 2,00</small></span><span class="val" style="color:var(--neg);font-weight:700">−5,00</span><span class="switch on swset" role="switch" aria-checked="true"></span></div>
+          <div class="setrow"><span class="ico" style="background:#E1F0FA;color:#2b7fb8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4 3 7 7 9 4-2 7-5 7-9V6l-7-3Z"/></svg></span><span class="nm">Vir. Trade Republic<small>Mensuel · ~le 9 · vers ton PEA</small></span><span class="val" style="color:var(--neg);font-weight:700">−50,00</span><span class="switch on swset" role="switch" aria-checked="true"></span></div>
         </div>
-
-        <div class="sec-h"><h3>Épargne récurrente · −50,00 / mois</h3></div>
-        <div class="card ledger">
-          <div class="setrow"><span class="ico" style="background:#E1F0FA;color:#2b7fb8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4 3 7 7 9 4-2 7-5 7-9V6l-7-3Z"/></svg></span><span class="nm">Vir. Trade Republic (PEA)<small>Mensuel · ~le 9 · vers ton compte-titres</small></span><span class="val" style="color:var(--neg);font-weight:700">−50,00</span><span class="switch on swset" role="switch" aria-checked="true"></span></div>
-        </div>
-        <p class="note" style="margin-top:-4px">Sort du compte LCL, donc compté dans la projection — mais gardé à part des charges : ce n'est pas une dépense, c'est un transfert vers ton PEA (suivi dans l'appli <b>PEA Francky</b>).</p>
         <button class="savebtn ghost" id="newRecurBtn">+ Nouvelle échéance récurrente</button>
 
         <div class="sec-h"><h3>Achats échelonnés en cours</h3></div>
@@ -1381,6 +1376,7 @@
     });
   }
   document.querySelectorAll('#recurIncCard .setrow, #recurExpCard .setrow').forEach(wireRecurRow);
+  recomputeRecurTotals(); // recalcule les totaux d'en-tête au chargement (au cas où le HTML statique dérive)
 
   document.getElementById('newRecurBtn').addEventListener('click',()=>{
     openModal('Nouvelle échéance récurrente', RECUR_FIELDS, v=>applyRecurrenceForm(v,null));
