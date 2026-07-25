@@ -813,9 +813,16 @@
   const addModeSel=document.getElementById('addMode');
   const addAmt=document.querySelector('[data-view="add"] .amtfield');
   addAmt.setAttribute('inputmode','decimal');
-  // sélectionne tout au focus/clic pour retaper directement, sans devoir effacer à la main
-  addAmt.addEventListener('focus',()=>addAmt.select());
-  addAmt.addEventListener('mouseup',e=>e.preventDefault());
+  // sélectionne tout au focus/clic pour retaper directement, sans devoir effacer à la main.
+  // Safari iOS annule un .select() appelé de façon synchrone dans le handler focus (il replace
+  // le curseur juste après) : il faut le reporter au tick suivant pour qu'il tienne.
+  function selectAllOnFocus(el){
+    const doSelect=()=>{ try{ el.setSelectionRange(0, el.value.length); }catch(e){ try{ el.select(); }catch(e2){} } };
+    el.addEventListener('focus',()=>setTimeout(doSelect,0));
+    el.addEventListener('touchend',()=>setTimeout(doSelect,0));
+    el.addEventListener('mouseup',e=>e.preventDefault());
+  }
+  selectAllOnFocus(addAmt);
   // accepte le point ET la virgule comme séparateur décimal, un seul à la fois
   addAmt.addEventListener('input',()=>{
     let v=addAmt.value.replace(/\./g,',').replace(/[^0-9,]/g,'');
@@ -1096,9 +1103,7 @@
           input.type=f.type||'text';
         }
         if(f.placeholder) input.placeholder=f.placeholder;
-        // sélectionne tout au tap/clic : évite d'avoir à effacer la valeur par défaut à la main
-        input.addEventListener('focus',()=>input.select());
-        input.addEventListener('mouseup',e=>e.preventDefault());
+        selectAllOnFocus(input);
       }
       input.id='mf_'+f.key;
       if(f.value!==undefined) input.value=f.value;
