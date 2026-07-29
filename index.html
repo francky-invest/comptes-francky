@@ -720,6 +720,10 @@
     currentUser=user;
     currentCompteId=await ensureCompte();
     authGate.classList.add('hide');
+    if(!currentCompteId){
+      alert('Erreur de connexion à la base de données — tes modifications ne seront pas sauvegardées cette fois. Réessaie de recharger l\'appli.');
+      return;
+    }
     await loadOpsFromSupabase();
   }
 
@@ -762,7 +766,7 @@
   }
   async function loadOpsFromSupabase(){
     const { data: rows, error } = await sb.from('operations').select('*').eq('compte_id', currentCompteId).order('date', { ascending:true });
-    if(error){ console.error('loadOpsFromSupabase', error); return; }
+    if(error){ console.error('loadOpsFromSupabase', error); alert('Erreur au chargement des opérations : '+error.message); return; }
     if(rows && rows.length){
       // des données existent déjà en base : elles remplacent le contenu statique de la maquette
       document.querySelectorAll('#ledger .op').forEach(o=>o.remove());
