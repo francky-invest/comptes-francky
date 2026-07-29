@@ -1067,7 +1067,7 @@
     const modeTxt=mo?mo.textContent.trim():''; if(mo) mo.remove();
     addModeSel.value=['CB','PRL','VIR','CHQ','ESP'].includes(modeTxt)?modeTxt:'CB';
     const txt=t2.textContent.trim(); const dm=txt.match(/(\d{2})\/(\d{2})/);
-    addDate.value=dm?'2026-'+dm[2]+'-'+dm[1]:'2026-07-24';
+    addDate.value=dm?'2026-'+dm[2]+'-'+dm[1]:TODAY;
     const parts=txt.split('·').map(s=>s.trim());
     selectChip(parts.length>1?parts[1]:'');
     addSwitches[0].classList.toggle('on',op.classList.contains('pt'));
@@ -1090,7 +1090,7 @@
     addTitle.textContent='Nouvelle opération';
     saveOpBtn.textContent="Enregistrer l'opération";
     addAmt.value='0,00'; setSign(true); addTiers.value='';
-    selectChip(''); addDate.value='2026-07-24'; addModeSel.value='CB';
+    selectChip(''); addDate.value=TODAY; addModeSel.value='CB';
     addSwitches.forEach(s=>s.classList.remove('on'));
     delOpBtn.style.display='none';
     dupOpBtn.style.display='none';
@@ -1123,7 +1123,7 @@
     'Allocations':{bg:'var(--pos-soft)',color:'var(--pos)',svg:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4M3 5v14a2 2 0 0 0 2 2h16v-5"/>'},
     'Remboursements':{bg:'var(--pos-soft)',color:'var(--pos)',svg:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4M3 5v14a2 2 0 0 0 2 2h16v-5"/>'}
   };
-  const TODAY='2026-07-24'; // "aujourd'hui" figé de la maquette
+  const TODAY=new Date().toISOString().slice(0,10); // vraie date du jour (avant : figée en dur à l'époque de la maquette)
 
   // lit et valide le formulaire ; renvoie null (+ alerte) si invalide
   function readOpForm(){
