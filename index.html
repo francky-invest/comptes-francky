@@ -14,6 +14,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Comptes">
 <style>:root{color-scheme:light dark}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <style>
@@ -300,7 +301,29 @@
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   a,button{-webkit-tap-highlight-color:transparent}
   :focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}
+  #authGate{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px calc(20px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));padding-top:calc(20px + env(safe-area-inset-top))}
+  #authGate.hide{display:none}
+  .authcard{width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px}
+  .authcard h1{font-size:19px;margin:0 0 4px}
+  .authcard .field{display:flex;flex-direction:column;gap:5px}
+  .authcard .field label{font:600 12px var(--sans);color:var(--text-dim)}
+  .authcard input{font:500 16px var(--sans);padding:12px 13px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text)}
+  .authcard button.authbtn{font:700 15px var(--sans);padding:13px;border-radius:12px;border:0;background:var(--brand);color:#fff;cursor:pointer}
+  .authcard button.authlink{font:600 13px var(--sans);padding:6px;border:0;background:none;color:var(--brand);cursor:pointer}
+  .authcard .autherr{font:500 13px var(--sans);color:var(--neg);display:none}
+  .authcard .autherr.on{display:block}
 </style>
+
+<div id="authGate">
+  <div class="authcard">
+    <h1 id="authTitle">Se connecter</h1>
+    <div class="field"><label>Email</label><input id="authEmail" type="email" autocomplete="username" inputmode="email"></div>
+    <div class="field"><label>Mot de passe</label><input id="authPwd" type="password" autocomplete="current-password"></div>
+    <p class="autherr" id="authErr"></p>
+    <button class="authbtn" id="authSubmit">Se connecter</button>
+    <button class="authlink" id="authToggle">Pas encore de compte ? Créer un compte</button>
+  </div>
+</div>
 
 <div class="wrap">
   <div class="phone">
@@ -647,6 +670,125 @@
 </div>
 
 <script>
+  // ---- Supabase : persistance réelle des comptes/opérations ----
+  const SUPABASE_URL='https://jwkedoewzodjbxeytbtc.supabase.co';
+  const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3a2Vkb2V3em9kamJ4ZXl0YnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNTA0MjcsImV4cCI6MjEwMDkyNjQyN30.iUtUnergclfVYCFrnGTFfq8df4Nln2YAzOrAYOIddAs';
+  const sb=supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let currentUser=null, currentCompteId=null;
+
+  const authGate=document.getElementById('authGate');
+  const authTitle=document.getElementById('authTitle');
+  const authEmail=document.getElementById('authEmail');
+  const authPwd=document.getElementById('authPwd');
+  const authErr=document.getElementById('authErr');
+  const authSubmit=document.getElementById('authSubmit');
+  const authToggle=document.getElementById('authToggle');
+  let authMode='login'; // 'login' | 'signup'
+  authToggle.addEventListener('click',()=>{
+    authMode = authMode==='login' ? 'signup' : 'login';
+    authTitle.textContent = authMode==='login' ? 'Se connecter' : 'Créer un compte';
+    authSubmit.textContent = authMode==='login' ? 'Se connecter' : 'Créer le compte';
+    authToggle.textContent = authMode==='login' ? 'Pas encore de compte ? Créer un compte' : 'Déjà un compte ? Se connecter';
+    authErr.classList.remove('on');
+  });
+  authSubmit.addEventListener('click', async ()=>{
+    const email=authEmail.value.trim(), pwd=authPwd.value;
+    if(!email || !pwd){ authErr.textContent='Email et mot de passe requis.'; authErr.classList.add('on'); return; }
+    authSubmit.disabled=true;
+    const { data, error } = authMode==='login'
+      ? await sb.auth.signInWithPassword({ email, password: pwd })
+      : await sb.auth.signUp({ email, password: pwd });
+    authSubmit.disabled=false;
+    if(error){ authErr.textContent=error.message; authErr.classList.add('on'); return; }
+    if(authMode==='signup' && !data.session){
+      authErr.textContent='Compte créé — vérifie ta boîte mail pour confirmer, puis connecte-toi.';
+      authErr.classList.add('on');
+      return;
+    }
+    await onAuthenticated(data.session.user);
+  });
+
+  async function ensureCompte(){
+    const { data: existing } = await sb.from('comptes').select('id').limit(1);
+    if(existing && existing.length){ return existing[0].id; }
+    const { data: created, error } = await sb.from('comptes').insert({ nom:'Compte de dépôts LCL', banque:'LCL' }).select('id').single();
+    if(error){ console.error(error); return null; }
+    return created.id;
+  }
+
+  async function onAuthenticated(user){
+    currentUser=user;
+    currentCompteId=await ensureCompte();
+    authGate.classList.add('hide');
+    await loadOpsFromSupabase();
+  }
+
+  function rowToFormData(r){
+    const dep = r.montant<0;
+    const [y,m,d]=r.date.split('-');
+    const catName=r.categorie_nom || (dep?'Alimentation':'Salaire');
+    return {dep, amtVal:Math.abs(r.montant), tiers:r.tiers, catName,
+      dateVal:r.date, modeVal:r.mode||'CB', pointee:r.pointee,
+      monthId:y+'-'+m, ddmm:d+'/'+m, amt:r.montant, isFuture:r.is_future,
+      icon:CAT_ICONS[catName]||CAT_ICONS['Alimentation']};
+  }
+  async function dbInsertOp(op, f){
+    if(!currentCompteId || !op) return;
+    const { data, error } = await sb.from('operations').insert({
+      compte_id: currentCompteId, tiers: f.tiers, montant: f.amt, date: f.dateVal,
+      mode: f.modeVal, pointee: f.pointee, is_future: f.isFuture, categorie_nom: f.catName
+    }).select('id').single();
+    if(error){ console.error('dbInsertOp', error); return; }
+    op.dataset.id = data.id;
+  }
+  async function dbUpdateOp(op, f){
+    if(!op) return;
+    if(!op.dataset.id){ await dbInsertOp(op, f); return; }
+    const { error } = await sb.from('operations').update({
+      tiers: f.tiers, montant: f.amt, date: f.dateVal, mode: f.modeVal,
+      pointee: f.pointee, is_future: f.isFuture, categorie_nom: f.catName
+    }).eq('id', op.dataset.id);
+    if(error) console.error('dbUpdateOp', error);
+  }
+  async function dbDeleteOp(op){
+    if(!op || !op.dataset.id) return;
+    const { error } = await sb.from('operations').delete().eq('id', op.dataset.id);
+    if(error) console.error('dbDeleteOp', error);
+  }
+  async function dbSetPointee(op){
+    if(!op || !op.dataset.id) return;
+    const { error } = await sb.from('operations').update({ pointee: op.classList.contains('pt') }).eq('id', op.dataset.id);
+    if(error) console.error('dbSetPointee', error);
+  }
+  async function loadOpsFromSupabase(){
+    const { data: rows, error } = await sb.from('operations').select('*').eq('compte_id', currentCompteId).order('date', { ascending:true });
+    if(error){ console.error('loadOpsFromSupabase', error); return; }
+    if(rows && rows.length){
+      // des données existent déjà en base : elles remplacent le contenu statique de la maquette
+      document.querySelectorAll('#ledger .op').forEach(o=>o.remove());
+      document.querySelectorAll('#ledger .daygrp').forEach(g=>g.remove());
+      rows.forEach(r=>{
+        const f=rowToFormData(r);
+        const op=insertNewOp(f);
+        op.classList.remove('flash');
+        op.dataset.id=r.id;
+      });
+    } else {
+      // première connexion : rien en base -> on migre les opérations actuellement affichées (données réelles connues)
+      const existingOps=[...document.querySelectorAll('#ledger .op')];
+      for(const op of existingOps){
+        const f=opToFormData(op);
+        await dbInsertOp(op, f);
+      }
+    }
+    applyMonthFilter();
+  }
+
+  (async function initAuth(){
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session && session.user){ await onAuthenticated(session.user); }
+  })();
+
   const tabs=[...document.querySelectorAll('.tab')];
   const views=[...document.querySelectorAll('.view')];
   const fabBtn=document.querySelector('.fab');
@@ -953,6 +1095,7 @@
   // suppression : retire l'opération éditée du ledger et recalcule tout
   delOpBtn.addEventListener('click',()=>{
     if(!editingOp) return;
+    dbDeleteOp(editingOp);
     editingOp.remove();
     editingOp=null; formMode='new';
     delOpBtn.style.display='none';
@@ -1036,7 +1179,7 @@
     list.appendChild(mkBtn(recurRow?'Modifier cette occurrence':'Modifier', null, ()=>duplicateFrom(op,'edit')));
     if(recurRow) list.appendChild(mkBtn('Modifier toutes les occurrences', null, ()=>openRecurEditForm(recurRow)));
     list.appendChild(mkBtn('Dupliquer', null, ()=>duplicateFrom(op,'duplicate')));
-    list.appendChild(mkBtn(recurRow?'Supprimer cette occurrence':'Supprimer', 'var(--neg)', ()=>{ op.remove(); applyMonthFilter(); }));
+    list.appendChild(mkBtn(recurRow?'Supprimer cette occurrence':'Supprimer', 'var(--neg)', ()=>{ dbDeleteOp(op); op.remove(); applyMonthFilter(); }));
     if(recurRow) list.appendChild(mkBtn('Supprimer toutes les occurrences', 'var(--neg)', ()=>{
       const name=recurRowName(recurRow);
       recurRow.remove();
@@ -1060,7 +1203,7 @@
       op.appendChild(menuBtn);
     }
     const chk=op.querySelector('.chk');
-    chk.addEventListener('click',e=>{ e.stopPropagation(); op.classList.toggle('pt'); chk.setAttribute('aria-checked',op.classList.contains('pt')); saveCheck(op); recompute(); });
+    chk.addEventListener('click',e=>{ e.stopPropagation(); op.classList.toggle('pt'); chk.setAttribute('aria-checked',op.classList.contains('pt')); saveCheck(op); dbSetPointee(op); recompute(); });
     if(!op.dataset.wired){
       op.dataset.wired='1';
       op.addEventListener('click',e=>{ if(e.target.closest('.chk')||e.target.closest('.opMenuBtn')) return; duplicateFrom(op); });
@@ -1098,9 +1241,9 @@
   // Enregistrer : modifie en place (edit), crée une copie à côté (duplicate), ou crée une ligne vierge (new)
   saveOpBtn.addEventListener('click',()=>{
     const f=readOpForm(); if(!f) return;
-    if(formMode==='duplicate'){ insertNewOp(f, editingOp); }
-    else if(formMode==='edit' && editingOp){ updateOpInPlace(editingOp,f); }
-    else{ insertNewOp(f); }
+    if(formMode==='duplicate'){ const op=insertNewOp(f, editingOp); dbInsertOp(op, f); }
+    else if(formMode==='edit' && editingOp){ updateOpInPlace(editingOp,f); dbUpdateOp(editingOp, f); }
+    else{ const op=insertNewOp(f); dbInsertOp(op, f); }
     editingOp=null; formMode='new';
     delOpBtn.style.display='none';
     dupOpBtn.style.display='none';
@@ -1111,7 +1254,7 @@
   const dupOpBtn=document.getElementById('dupOpBtn');
   dupOpBtn.addEventListener('click',()=>{
     const f=readOpForm(); if(!f) return;
-    insertNewOp(f, editingOp);
+    const op=insertNewOp(f, editingOp); dbInsertOp(op, f);
     editingOp=null; formMode='new';
     delOpBtn.style.display='none';
     dupOpBtn.style.display='none';
