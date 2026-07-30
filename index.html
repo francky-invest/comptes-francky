@@ -764,6 +764,13 @@
     const { error } = await sb.from('operations').update({ pointee: op.classList.contains('pt') }).eq('id', op.dataset.id);
     if(error) console.error('dbSetPointee', error);
   }
+  // promeut une échéance à venir en opération réelle (elle vient d'arriver en banque),
+  // sans quoi elle resterait exclue du solde réel/pointé même cochée (cf computeReel/computePointe)
+  async function dbMarkArrived(op){
+    if(!op || !op.dataset.id) return;
+    const { error } = await sb.from('operations').update({ is_future:false, pointee:true }).eq('id', op.dataset.id);
+    if(error) console.error('dbMarkArrived', error);
+  }
   async function loadOpsFromSupabase(){
     const { data: rows, error } = await sb.from('operations').select('*').eq('compte_id', currentCompteId).order('date', { ascending:false });
     if(error){ console.error('loadOpsFromSupabase', error); alert('Erreur au chargement des opérations : '+error.message); return; }
@@ -1193,6 +1200,14 @@
     // seulement cette occurrence, ou l'échéance entière (toutes les occurrences)
     const recurRow = op.classList.contains('fut') ? findRecurRowForOp(op) : null;
 
+    if(op.classList.contains('fut')) list.appendChild(mkBtn('Marquer comme arrivée en banque', 'var(--pos)', async ()=>{
+      op.classList.remove('fut'); op.classList.add('pt');
+      const chk=op.querySelector('.chk'); if(chk) chk.setAttribute('aria-checked','true');
+      await dbMarkArrived(op);
+      saveCheck(op);
+      applyMonthFilter();
+      recompute();
+    }));
     list.appendChild(mkBtn(recurRow?'Modifier cette occurrence':'Modifier', null, ()=>duplicateFrom(op,'edit')));
     if(recurRow) list.appendChild(mkBtn('Modifier toutes les occurrences', null, ()=>openRecurEditForm(recurRow)));
     list.appendChild(mkBtn('Dupliquer', null, ()=>duplicateFrom(op,'duplicate')));
