@@ -1315,7 +1315,31 @@
   document.querySelectorAll('[data-view="add"] .cc').forEach(wireCatChip);
   // interrupteurs — wireSwitch() doit aussi être appelé pour tout interrupteur créé après coup
   // (le querySelectorAll ci-dessous ne voit que ceux déjà dans le DOM au chargement)
-  function wireSwitch(s){ if(s) s.addEventListener('click',e=>{e.preventDefault();s.classList.toggle('on');}); }
+  // .swset = interrupteur d'une échéance récurrente (Échéancier) : doit répercuter sur les
+  // opérations "à venir" correspondantes du ledger, sinon il n'a aucun effet sur les soldes/projections
+  // (c'est ce qui causait "je décoche une échéance mais le solde prévu ne bouge pas")
+  function wireSwitch(s){
+    if(!s) return;
+    s.addEventListener('click',e=>{
+      e.preventDefault();
+      s.classList.toggle('on');
+      const on=s.classList.contains('on');
+      s.setAttribute('aria-checked', on);
+      if(!s.classList.contains('swset')) return;
+      const row=s.closest('.setrow');
+      const name=row?recurRowName(row):null;
+      if(!name) return;
+      document.querySelectorAll('#ledger .op.fut').forEach(op=>{
+        const t1=op.querySelector('.t1')?.textContent.trim();
+        if(t1!==name) return;
+        op.classList.toggle('pt', on);
+        const chk=op.querySelector('.chk'); if(chk) chk.setAttribute('aria-checked', on);
+        saveCheck(op);
+        dbSetPointee(op);
+      });
+      recompute();
+    });
+  }
   document.querySelectorAll('.switch').forEach(wireSwitch);
 
   // ---- Modale interne (remplace prompt/confirm/alert, bloqués dans l'iframe sandboxée) ----
