@@ -822,6 +822,17 @@
     });
     return reel;
   }
+  // solde pointé recalculé en direct (seulement les opérations passées cochées) — sert de base
+  // au Prévu et aux projections : décocher une opération passée (ex. salaire pas encore reçu)
+  // doit se répercuter sur les projections, pas seulement sur le solde pointé affiché.
+  function computePointe(){
+    let pointe=OPENING;
+    document.querySelectorAll('#ledger .op').forEach(o=>{
+      if(o.classList.contains('fut')) return;
+      if(o.classList.contains('pt')) pointe+=parseFloat(o.dataset.amt);
+    });
+    return pointe;
+  }
 
   // mois affiché dans Opérations : ne montre que les lignes de ce mois-là
   const MONTHS=[{id:'2026-07',lbl:'Juil.',end:'2026-07-31'},{id:'2026-08',lbl:'Août',end:'2026-08-31'},{id:'2026-09',lbl:'Sept.',end:'2026-09-30'}];
@@ -856,7 +867,7 @@
       reel+=a;                          // solde réel = toutes les opérations passées, cochées ou non
       if(o.classList.contains('pt')) pointe+=a;  // solde pointé = seulement les rapprochées
     });
-    let prev=reel;  // le prévu part du solde réel À JOUR, pas d'une valeur figée
+    let prev=pointe;  // le prévu part du solde POINTÉ (pas du réel) : décocher une opération passée se répercute sur la projection
     futEls().forEach(o=>{
       if(o.classList.contains('pt') && o.dataset.date && o.dataset.date<=jend) prev+=parseFloat(o.dataset.amt);
     });
@@ -899,7 +910,7 @@
   const projBal=document.getElementById('projBal');
   const projSub=document.getElementById('projSub');
   function balanceAt(dateStr){
-    let s=computeReel(), n=0;
+    let s=computePointe(), n=0;
     futEls().forEach(o=>{
       if(!o.classList.contains('pt')) return;
       if(o.dataset.date && o.dataset.date<=dateStr){ s+=parseFloat(o.dataset.amt); n++; }
