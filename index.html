@@ -765,7 +765,7 @@
     if(error) console.error('dbSetPointee', error);
   }
   async function loadOpsFromSupabase(){
-    const { data: rows, error } = await sb.from('operations').select('*').eq('compte_id', currentCompteId).order('date', { ascending:true });
+    const { data: rows, error } = await sb.from('operations').select('*').eq('compte_id', currentCompteId).order('date', { ascending:false });
     if(error){ console.error('loadOpsFromSupabase', error); alert('Erreur au chargement des opérations : '+error.message); return; }
     if(rows && rows.length){
       // des données existent déjà en base : elles remplacent le contenu statique de la maquette
@@ -942,7 +942,7 @@
   applyMonthFilter(); // filtre sur le mois courant + calcule pointé/prévu + solde à date + jalons
 
   // recherche + tri des opérations (Date/Nom/Montant) — le tri par nom/montant casse l'ordre
-  // chronologique attendu par insertIntoMonth, donc on mémorise cet ordre avant de le perturber
+  // chronologique (le plus récent en haut), donc on mémorise cet ordre avant de le perturber
   // pour pouvoir y revenir proprement en repassant sur "Date".
   const opSearch=document.getElementById('opSearch');
   const opSort=document.getElementById('opSort');
@@ -1226,19 +1226,22 @@
       op.addEventListener('click',e=>{ if(e.target.closest('.chk')||e.target.closest('.opMenuBtn')) return; duplicateFrom(op); });
     }
   }
+  // insère `op` triée par date décroissante (plus récent en haut), parmi toutes les opérations déjà affichées
+  function insertSorted(isoDate, op){
+    const ledger=document.getElementById('ledger');
+    const ref=[...ledger.querySelectorAll('.op')].find(o=>o!==op && (o.dataset.date||'')<isoDate);
+    if(ref) ref.before(op); else ledger.appendChild(op);
+    return true;
+  }
   function insertNewOp(f, afterEl){
     const op=document.createElement('div');
     op.className='op'+(f.isFuture?' fut':'')+(f.pointee?' pt':'');
-    op.dataset.month=f.monthId; op.dataset.amt=f.amt.toFixed(2);
-    if(f.isFuture) op.dataset.date=f.dateVal;
+    op.dataset.month=f.monthId; op.dataset.amt=f.amt.toFixed(2); op.dataset.date=f.dateVal;
     op.innerHTML=opMarkup(f);
     if(afterEl && afterEl.isConnected){
       afterEl.after(op);
-    } else if(f.isFuture){
-      if(!insertIntoMonth(f.monthId, f.dateVal, op)) document.getElementById('ledger').appendChild(op);
     } else {
-      const firstDaygrp=document.querySelector('#ledger .daygrp');
-      if(firstDaygrp) firstDaygrp.before(op); else document.getElementById('ledger').appendChild(op);
+      insertSorted(f.dateVal, op);
     }
     wireOp(op);
     saveCheck(op);
@@ -1249,9 +1252,10 @@
   }
   function updateOpInPlace(op,f){
     op.className='op'+(f.isFuture?' fut':'')+(f.pointee?' pt':'');
-    op.dataset.month=f.monthId; op.dataset.amt=f.amt.toFixed(2);
-    if(f.isFuture) op.dataset.date=f.dateVal; else delete op.dataset.date;
+    op.dataset.month=f.monthId; op.dataset.amt=f.amt.toFixed(2); op.dataset.date=f.dateVal;
     op.innerHTML=opMarkup(f);
+    op.remove();
+    insertSorted(f.dateVal, op);
     wireOp(op);
     saveCheck(op);
   }
@@ -1412,23 +1416,13 @@
   const eur=v=>v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
   // insère `op` au bon endroit chronologique parmi les échéances déjà listées pour ce mois
   // (au lieu de toujours la mettre en première position du mois)
-  function insertIntoMonth(monthId,isoDate,op){
-    const grp=document.querySelector('#ledger .daygrp[data-month="'+monthId+'"]');
-    if(!grp) return false;
-    let ref=grp.nextElementSibling;
-    while(ref && ref.classList.contains('op') && ref.dataset.month===monthId && ref.dataset.date && ref.dataset.date<=isoDate){
-      ref=ref.nextElementSibling;
-    }
-    if(ref) ref.before(op); else document.getElementById('ledger').appendChild(op);
-    return true;
-  }
   function insertFutureOp(monthId,isoDate,amt,title,sub,iconBg,iconColor,iconSvg){
     const op=document.createElement('div');
     op.className='op fut pt';
     op.dataset.month=monthId; op.dataset.amt=amt.toFixed(2); op.dataset.date=isoDate;
     const mclass=amt>=0?'pos':'neg', sign=amt>=0?'+':'−';
     op.innerHTML='<span class="chk" role="checkbox" aria-checked="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L20 6"/></svg></span><span class="cat" style="background:'+iconBg+';color:'+iconColor+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+iconSvg+'</svg></span><span class="mid"><div class="t1">'+title+'</div><div class="t2">'+sub+'<span class="mode">À VENIR</span></div></span><span class="right"><div class="m '+mclass+'">'+sign+eur(Math.abs(amt))+'</div><div class="s"></div></span>';
-    if(!insertIntoMonth(monthId,isoDate,op)) return false;
+    insertSorted(isoDate, op);
     wireOp(op);
     saveCheck(op);
     return true;
