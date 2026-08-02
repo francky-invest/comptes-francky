@@ -725,6 +725,7 @@
       return;
     }
     await loadOpsFromSupabase();
+    await loadCategoriesFromSupabase();
   }
 
   function rowToFormData(r){
@@ -861,7 +862,6 @@
     });
     const lbl='fin '+m.lbl.toLowerCase().replace('.','');
     footPrevLbl.textContent='Prévu '+lbl;
-    acctPrevLbl.textContent='Prévu '+lbl;
     recompute();
   }
 
@@ -886,7 +886,6 @@
     acctRowBig.textContent=fmt(reel);
     acctRowSub.textContent='pointé '+pointe.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
     acctPointeChip.textContent=fmt(pointe);
-    acctPrevChip.textContent=fmt(prev);
     updateProj();
     updateMiles();
   }
@@ -926,10 +925,15 @@
   }
   function updateProj(){
     const dv=projDate.value; const {bal,n}=balanceAt(dv);
-    projBal.textContent=bal.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const balTxt=bal.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    projBal.textContent=balTxt;
     projBal.style.color = bal<0 ? 'var(--neg)' : (bal<200 ? 'var(--pending)' : '');
     const p=dv.split('-');
     projSub.textContent = n+' échéance'+(n>1?'s':'')+' compt'+(n>1?'ées':'ée')+' jusqu\'au '+p[2]+'/'+p[1]+'/'+p[0];
+    // page d'accueil : même source de vérité que le sélecteur de date ci-dessus (plus de calcul séparé par mois)
+    acctPrevLbl.textContent='Prévu '+p[2]+'/'+p[1];
+    acctPrevChip.textContent=balTxt;
+    saveProjDate(dv);
   }
   projDate.addEventListener('input',()=>{ updateProj(); updateMiles(); });
   projDate.addEventListener('change',()=>{ updateProj(); updateMiles(); });
@@ -944,6 +948,19 @@
     });
   }
   milesEls.forEach(m=>m.addEventListener('click',()=>{ projDate.value=m.dataset.date; go('ops'); updateProj(); updateMiles(); }));
+
+  // date du "solde prévu" : reprend la dernière valeur choisie (localStorage), sinon la vraie date du jour
+  // (avant : figée en dur sur 2026-07-31 dans le HTML -> revenait toujours sur juillet au redémarrage)
+  function loadProjDate(){ try{ return localStorage.getItem('cf_projdate'); }catch(e){ return null; } }
+  function saveProjDate(v){ try{ localStorage.setItem('cf_projdate', v); }catch(e){} }
+  (function initProjDate(){
+    const d=new Date();
+    const todayLocal=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    let v=loadProjDate()||todayLocal;
+    if(v<projDate.min) v=projDate.min;
+    if(v>projDate.max) v=projDate.max;
+    projDate.value=v;
+  })();
 
   restoreChecks(); // reprend les cases cochées/décochées de la dernière visite (localStorage)
   applyMonthFilter(); // filtre sur le mois courant + calcule pointé/prévu + solde à date + jalons
@@ -1141,6 +1158,30 @@
     'Allocations':{bg:'var(--pos-soft)',color:'var(--pos)',svg:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4M3 5v14a2 2 0 0 0 2 2h16v-5"/>'},
     'Remboursements':{bg:'var(--pos-soft)',color:'var(--pos)',svg:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4M3 5v14a2 2 0 0 0 2 2h16v-5"/>'}
   };
+  // icône générique pour toute catégorie créée par l'utilisateur (même glyphe que la ligne "Catégories" des Réglages)
+  const CUSTOM_CAT_SVG='<path d="M20.6 13.4 11 3.8a2 2 0 0 0-1.4-.6H4a2 2 0 0 0-2 2v5.6a2 2 0 0 0 .6 1.4l9.6 9.6a2 2 0 0 0 2.8 0l5-5a2 2 0 0 0 0-2.8Z"/><circle cx="7" cy="7" r="1.3"/>';
+  // dessine une ligne (Catégories) + un chip (formulaire Ajouter) pour une catégorie, native ou custom,
+  // et l'enregistre dans CAT_ICONS pour que les opérations qui l'utilisent affichent la bonne icône
+  function renderCategoryRow(name, color, isRevenu){
+    const row=document.createElement('div'); row.className='setrow';
+    row.innerHTML='<span class="cdot" style="background:'+color+';width:12px;height:12px"></span><span class="nm">'+name+'</span><span class="val">Nouvelle</span>';
+    document.getElementById(isRevenu?'catsInc':'catsExp').appendChild(row);
+    const chip=document.createElement('button'); chip.className='cc';
+    chip.innerHTML='<span class="cdot" style="background:'+color+'"></span>'+name;
+    document.getElementById(isRevenu?'catchipsInc':'catchipsExp').appendChild(chip);
+    wireCatChip(chip);
+    CAT_ICONS[name]={bg:isRevenu?'var(--pos-soft)':'#EDEBFF',color:isRevenu?'var(--pos)':color,svg:CUSTOM_CAT_SVG};
+  }
+  // recharge les catégories créées par Francky lors de sessions précédentes (les 13 catégories de base
+  // restent en dur ci-dessus ; seules les catégories custom sont en base, cf. supabase_schema.sql)
+  async function loadCategoriesFromSupabase(){
+    const { data: rows, error } = await sb.from('categories').select('*');
+    if(error){ console.error('loadCategoriesFromSupabase', error); return; }
+    (rows||[]).forEach(r=>{
+      if(CAT_ICONS[r.nom]) return; // déjà affichée (catégorie de base) — évite un doublon visuel
+      renderCategoryRow(r.nom, r.icone_key||(r.sens==='revenu'?'var(--pos)':catPalette[catPaletteIdx++%catPalette.length]), r.sens==='revenu');
+    });
+  }
   // vraie date du jour, en heure LOCALE (toISOString() donne l'UTC, décalé la nuit par rapport au calendrier de Francky)
   const _now=new Date();
   const TODAY=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
@@ -1436,15 +1477,13 @@
     ], v=>{
       const name=v.name.trim();
       if(!name) return 'Donne un nom à la catégorie.';
+      if(CAT_ICONS[name]) return 'Cette catégorie existe déjà.';
       const isRevenu=v.kind==='inc';
       const color=isRevenu?'var(--pos)':catPalette[catPaletteIdx++%catPalette.length];
-      const row=document.createElement('div'); row.className='setrow';
-      row.innerHTML='<span class="cdot" style="background:'+color+';width:12px;height:12px"></span><span class="nm">'+name+'</span><span class="val">Nouvelle</span>';
-      document.getElementById(isRevenu?'catsInc':'catsExp').appendChild(row);
-      const chip=document.createElement('button'); chip.className='cc';
-      chip.innerHTML='<span class="cdot" style="background:'+color+'"></span>'+name;
-      document.getElementById(isRevenu?'catchipsInc':'catchipsExp').appendChild(chip);
-      wireCatChip(chip);
+      renderCategoryRow(name, color, isRevenu);
+      // persistance en base (avant : rien n'était sauvegardé, la catégorie disparaissait au redémarrage)
+      sb.from('categories').insert({ nom:name, sens:isRevenu?'revenu':'depense', icone_key:color })
+        .then(({error})=>{ if(error) console.error('insert categorie', error); });
       return true;
     });
   });
