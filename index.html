@@ -849,7 +849,17 @@
 
   // mois affiché dans Opérations : ne montre que les lignes de ce mois-là
   const MONTHS=[{id:'2026-07',lbl:'Juil.',end:'2026-07-31'},{id:'2026-08',lbl:'Août',end:'2026-08-31'},{id:'2026-09',lbl:'Sept.',end:'2026-09-30'}];
-  let monthIdx=0;
+  // reprend le dernier mois choisi (localStorage), sinon déduit le mois réel du jour
+  // (avant : figé sur l'index 0 -> revenait toujours sur Juillet au redémarrage)
+  function loadMonthId(){ try{ return localStorage.getItem('cf_monthid'); }catch(e){ return null; } }
+  function saveMonthId(id){ try{ localStorage.setItem('cf_monthid', id); }catch(e){} }
+  let monthIdx=(function(){
+    const saved=loadMonthId();
+    if(saved){ const i=MONTHS.findIndex(m=>m.id===saved); if(i>=0) return i; }
+    const d=new Date(), curId=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const i2=MONTHS.findIndex(m=>m.id===curId);
+    return i2>=0 ? i2 : 0;
+  })();
   const monthLbl=document.getElementById('monthLbl');
   const monthPicker=document.getElementById('monthPicker');
   const footPrevLbl=document.querySelector('.foot .box.bank .k');
@@ -862,6 +872,7 @@
   function applyMonthFilter(){
     const m=MONTHS[monthIdx];
     monthLbl.textContent=m.lbl;
+    saveMonthId(m.id);
     document.querySelectorAll('#ledger .op, #ledger .daygrp').forEach(el=>{
       el.classList.toggle('mhide', el.dataset.month!==m.id);
     });
