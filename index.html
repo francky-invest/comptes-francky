@@ -737,23 +737,28 @@
       monthId:y+'-'+m, ddmm:d+'/'+m, amt:r.montant, isFuture:r.is_future,
       icon:CAT_ICONS[catName]||CAT_ICONS['Alimentation']};
   }
+  // Retournent true/false : l'appelant DOIT attendre (await) et prévenir l'utilisateur en cas d'échec
+  // (avant : appelées sans await depuis le bouton Enregistrer -> si l'appli se fermait/passait en arrière-plan
+  // juste après le tap, l'écriture pouvait être coupée en plein vol, opération perdue sans aucun message)
   async function dbInsertOp(op, f){
-    if(!currentCompteId || !op) return;
+    if(!currentCompteId || !op) return false;
     const { data, error } = await sb.from('operations').insert({
       compte_id: currentCompteId, tiers: f.tiers, montant: f.amt, date: f.dateVal,
       mode: f.modeVal, pointee: f.pointee, is_future: f.isFuture, categorie_nom: f.catName
     }).select('id').single();
-    if(error){ console.error('dbInsertOp', error); return; }
+    if(error){ console.error('dbInsertOp', error); return false; }
     op.dataset.id = data.id;
+    return true;
   }
   async function dbUpdateOp(op, f){
-    if(!op) return;
-    if(!op.dataset.id){ await dbInsertOp(op, f); return; }
+    if(!op) return false;
+    if(!op.dataset.id){ return await dbInsertOp(op, f); }
     const { error } = await sb.from('operations').update({
       tiers: f.tiers, montant: f.amt, date: f.dateVal, mode: f.modeVal,
       pointee: f.pointee, is_future: f.isFuture, categorie_nom: f.catName
     }).eq('id', op.dataset.id);
-    if(error) console.error('dbUpdateOp', error);
+    if(error){ console.error('dbUpdateOp', error); return false; }
+    return true;
   }
   async function dbDeleteOp(op){
     if(!op || !op.dataset.id) return;
@@ -1316,11 +1321,18 @@
     saveCheck(op);
   }
   // Enregistrer : modifie en place (edit), crée une copie à côté (duplicate), ou crée une ligne vierge (new)
-  saveOpBtn.addEventListener('click',()=>{
+  // async + attend la confirmation d'écriture Supabase avant de quitter l'écran : si l'appli était
+  // fermée avant que l'écriture soit partie, l'opération pouvait se perdre silencieusement (cf. dbInsertOp)
+  saveOpBtn.addEventListener('click', async ()=>{
     const f=readOpForm(); if(!f) return;
-    if(formMode==='duplicate'){ const op=insertNewOp(f, editingOp); dbInsertOp(op, f); }
-    else if(formMode==='edit' && editingOp){ updateOpInPlace(editingOp,f); dbUpdateOp(editingOp, f); }
-    else{ const op=insertNewOp(f); dbInsertOp(op, f); }
+    saveOpBtn.disabled=true;
+    const prevTxt=saveOpBtn.textContent; saveOpBtn.textContent='Enregistrement…';
+    let ok;
+    if(formMode==='duplicate'){ const op=insertNewOp(f, editingOp); ok=await dbInsertOp(op, f); if(!ok) op.remove(); }
+    else if(formMode==='edit' && editingOp){ updateOpInPlace(editingOp,f); ok=await dbUpdateOp(editingOp, f); }
+    else{ const op=insertNewOp(f); ok=await dbInsertOp(op, f); if(!ok) op.remove(); }
+    saveOpBtn.disabled=false; saveOpBtn.textContent=prevTxt;
+    if(!ok){ alert("Échec de l'enregistrement (connexion coupée ?). L'opération n'a PAS été sauvegardée — réessaie."); return; }
     editingOp=null; formMode='new';
     delOpBtn.style.display='none';
     dupOpBtn.style.display='none';
@@ -1329,9 +1341,13 @@
   });
   // Dupliquer en nouvelle opération : garde l'originale intacte, en ajoute une copie (visible seulement en édition)
   const dupOpBtn=document.getElementById('dupOpBtn');
-  dupOpBtn.addEventListener('click',()=>{
+  dupOpBtn.addEventListener('click', async ()=>{
     const f=readOpForm(); if(!f) return;
-    const op=insertNewOp(f, editingOp); dbInsertOp(op, f);
+    dupOpBtn.disabled=true;
+    const op=insertNewOp(f, editingOp);
+    const ok=await dbInsertOp(op, f);
+    dupOpBtn.disabled=false;
+    if(!ok){ op.remove(); alert("Échec de l'enregistrement (connexion coupée ?). La copie n'a PAS été sauvegardée — réessaie."); return; }
     editingOp=null; formMode='new';
     delOpBtn.style.display='none';
     dupOpBtn.style.display='none';
