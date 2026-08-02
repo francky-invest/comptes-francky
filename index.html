@@ -392,7 +392,8 @@
             <input id="opSearch" type="text" placeholder="Rechercher un tiers…">
           </div>
           <select id="opSort" aria-label="Trier">
-            <option value="date">Date</option>
+            <option value="date">Date (récent→ancien)</option>
+            <option value="dateAsc">Date (ancien→récent)</option>
             <option value="name">Nom A→Z</option>
             <option value="amtDesc">Montant ↓</option>
             <option value="amtAsc">Montant ↑</option>
@@ -1006,6 +1007,7 @@
         if(mode==='name') return (a.querySelector('.t1').textContent).localeCompare(b.querySelector('.t1').textContent);
         if(mode==='amtDesc') return parseFloat(b.dataset.amt)-parseFloat(a.dataset.amt);
         if(mode==='amtAsc') return parseFloat(a.dataset.amt)-parseFloat(b.dataset.amt);
+        if(mode==='dateAsc') return (a.dataset.date||'').localeCompare(b.dataset.date||'');
         return 0;
       });
       ops.forEach(op=>ledger.appendChild(op));
