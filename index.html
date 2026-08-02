@@ -727,6 +727,10 @@
     }
     await loadOpsFromSupabase();
     await loadCategoriesFromSupabase();
+    // loadOpsFromSupabase reconstruit le ledger en ordre par défaut (date décroissante) à chaque
+    // chargement -> réappliquer le tri mémorisé pour qu'il survive vraiment à un redémarrage
+    chronoOrder=null;
+    applySearchSort();
   }
 
   function rowToFormData(r){
@@ -988,6 +992,13 @@
   const opSearch=document.getElementById('opSearch');
   const opSort=document.getElementById('opSort');
   let chronoOrder=null;
+  // reprend le dernier tri choisi (localStorage) — avant : revenait toujours sur "Date" au redémarrage
+  function loadOpSort(){ try{ return localStorage.getItem('cf_opsort'); }catch(e){ return null; } }
+  function saveOpSort(v){ try{ localStorage.setItem('cf_opsort', v); }catch(e){} }
+  (function initOpSort(){
+    const saved=loadOpSort();
+    if(saved && [...opSort.options].some(o=>o.value===saved)) opSort.value=saved;
+  })();
   function applySearchSort(){
     const q=opSearch.value.trim().toLowerCase();
     document.querySelectorAll('#ledger .op').forEach(op=>{
@@ -1014,7 +1025,7 @@
     }
   }
   opSearch.addEventListener('input',applySearchSort);
-  opSort.addEventListener('change',applySearchSort);
+  opSort.addEventListener('change',()=>{ saveOpSort(opSort.value); applySearchSort(); });
 
   // theme toggle
   document.getElementById('themebtn').addEventListener('click',()=>{
