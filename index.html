@@ -791,6 +791,14 @@
     const { error } = await sb.from('operations').update({ is_future:false, pointee:true }).eq('id', op.dataset.id);
     if(error) console.error('dbMarkArrived', error);
   }
+  // annule "marquer arrivée en banque" : redevient une échéance à venir normale. Sans ça, décocher
+  // une opération qu'on venait de marquer arrivée par erreur la rendait orpheline (ni .fut ni .pt,
+  // invisible du solde en banque ET de Prévu) — cause du "montant qui disparaît" après un clic.
+  async function dbUnmarkArrived(op){
+    if(!op || !op.dataset.id) return;
+    const { error } = await sb.from('operations').update({ is_future:true, pointee:false }).eq('id', op.dataset.id);
+    if(error) console.error('dbUnmarkArrived', error);
+  }
   async function loadOpsFromSupabase(){
     const { data: rows, error } = await sb.from('operations').select('*').eq('compte_id', currentCompteId).order('date', { ascending:false });
     if(error){ console.error('loadOpsFromSupabase', error); alert('Erreur au chargement des opérations : '+error.message); return; }
@@ -800,6 +808,13 @@
       document.querySelectorAll('#ledger .daygrp').forEach(g=>g.remove());
       rows.forEach(r=>{
         const f=rowToFormData(r);
+        // auto-réparation : une opération datée dans le futur mais ni "à venir" ni "pointée" est un
+        // état invalide (orphelin d'un clic "marquer arrivée" annulé avant ce correctif) — elle
+        // redevient une échéance à venir normale, en base comme à l'écran
+        if(!f.isFuture && !f.pointee && f.dateVal>TODAY){
+          f.isFuture=true;
+          sb.from('operations').update({ is_future:true }).eq('id', r.id).then(({error})=>{ if(error) console.error('auto-repair', error); });
+        }
         const op=insertNewOp(f);
         op.classList.remove('flash');
         op.dataset.id=r.id;
@@ -1321,6 +1336,14 @@
         op.classList.remove('fut'); op.classList.add('pt');
         chk.setAttribute('aria-checked','true');
         await dbMarkArrived(op);
+        applyMonthFilter();
+      } else if(op.classList.contains('pt') && op.dataset.date && op.dataset.date>TODAY){
+        // décocher une opération "marquée arrivée" par erreur, dont la date n'est pourtant pas
+        // encore passée : on annule la transition plutôt qu'un simple toggle, sinon elle devient
+        // orpheline (ni à venir, ni pointée) et disparaît de tous les soldes
+        op.classList.remove('pt'); op.classList.add('fut');
+        chk.setAttribute('aria-checked','false');
+        await dbUnmarkArrived(op);
         applyMonthFilter();
       } else {
         op.classList.toggle('pt'); chk.setAttribute('aria-checked',op.classList.contains('pt')); dbSetPointee(op);
