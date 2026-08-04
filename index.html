@@ -897,8 +897,10 @@
       if(o.classList.contains('pt')) pointe+=a;  // solde pointé = seulement les rapprochées
     });
     let prev=pointe;  // le prévu part du solde POINTÉ (pas du réel) : décocher une opération passée se répercute sur la projection
+    // le prévu compte TOUTES les échéances futures actives, cochées ou non (une échéance cochée
+    // n'est plus "future" : elle est passée dans le pointé via "Marquer comme arrivée en banque")
     futEls().forEach(o=>{
-      if(o.classList.contains('pt') && o.dataset.date && o.dataset.date<=jend) prev+=parseFloat(o.dataset.amt);
+      if(o.dataset.date && o.dataset.date<=jend) prev+=parseFloat(o.dataset.amt);
     });
     document.getElementById('sPointe').textContent=fmt(pointe);
     const pv=document.getElementById('sPrev');
@@ -938,9 +940,9 @@
   const projBal=document.getElementById('projBal');
   const projSub=document.getElementById('projSub');
   function balanceAt(dateStr){
+    // même principe que recompute() : toutes les échéances futures actives comptent, cochées ou non
     let s=computePointe(), n=0;
     futEls().forEach(o=>{
-      if(!o.classList.contains('pt')) return;
       if(o.dataset.date && o.dataset.date<=dateStr){ s+=parseFloat(o.dataset.amt); n++; }
     });
     return {bal:s, n};
@@ -1306,7 +1308,21 @@
       op.appendChild(menuBtn);
     }
     const chk=op.querySelector('.chk');
-    chk.addEventListener('click',e=>{ e.stopPropagation(); op.classList.toggle('pt'); chk.setAttribute('aria-checked',op.classList.contains('pt')); saveCheck(op); dbSetPointee(op); recompute(); });
+    chk.addEventListener('click', async e=>{
+      e.stopPropagation();
+      if(op.classList.contains('fut')){
+        // sur une échéance future, cocher = "elle vient d'arriver en banque" : elle quitte le
+        // futur et rejoint le pointé pour de vrai (même effet que le menu ⋮ "Marquer comme arrivée")
+        op.classList.remove('fut'); op.classList.add('pt');
+        chk.setAttribute('aria-checked','true');
+        await dbMarkArrived(op);
+        saveCheck(op);
+        applyMonthFilter();
+      } else {
+        op.classList.toggle('pt'); chk.setAttribute('aria-checked',op.classList.contains('pt')); saveCheck(op); dbSetPointee(op);
+      }
+      recompute();
+    });
     if(!op.dataset.wired){
       op.dataset.wired='1';
       op.addEventListener('click',e=>{ if(e.target.closest('.chk')||e.target.closest('.opMenuBtn')) return; duplicateFrom(op); });
