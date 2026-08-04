@@ -280,6 +280,7 @@
   .op.fut .s{color:var(--text-dim)}
   .op.fut.pt{background:transparent}
   .op.fut.pt .chk{border-style:solid}
+  .op.fut.inact{opacity:.45}
   .op.mhide,.daygrp.mhide{display:none}
   .step button:disabled{opacity:.35;cursor:default}
   /* modale interne (pas de prompt/alert natifs : bloqués dans l'iframe sandboxée) */
@@ -383,7 +384,7 @@
 
         <div class="foot">
           <div class="box pt"><div class="k">Solde pointé</div><div class="v" id="sPointe">83,12 €</div></div>
-          <div class="box bank"><div class="k">Prévu fin juil.</div><div class="v" id="sPrev">1 426,48 €</div></div>
+          <div class="box bank"><div class="k" id="footPrevLbl">Prévu</div><div class="v" id="sPrev">1 426,48 €</div></div>
         </div>
 
         <div class="filt">
@@ -830,7 +831,9 @@
   const OPENING=1229.97;  // solde juste avant la 1ère ligne affichée (03/07, réel, calculé depuis le LEDGERBAL OFX)
   const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 
-  function futEls(){ return [...document.querySelectorAll('#ledger .op.fut')]; }
+  // exclut les échéances désactivées via l'interrupteur de l'Échéancier (classe .inact) :
+  // celles-ci ne doivent compter dans AUCUNE projection (Prévu, solde à une date, jalons)
+  function futEls(){ return [...document.querySelectorAll('#ledger .op.fut:not(.inact)')]; }
   // solde réel recalculé en direct (toutes les opérations passées, cochées ou non) — jamais figé,
   // pour que toute opération ajoutée/modifiée à la main (dupliquer, éditer) se répercute partout.
   function computeReel(){
@@ -882,26 +885,22 @@
     document.querySelectorAll('#ledger .op, #ledger .daygrp').forEach(el=>{
       el.classList.toggle('mhide', el.dataset.month!==m.id);
     });
-    const lbl='fin '+m.lbl.toLowerCase().replace('.','');
-    footPrevLbl.textContent='Prévu '+lbl;
     recompute();
   }
 
   function recompute(){
     let reel=OPENING, pointe=OPENING;
-    const jend=MONTHS[monthIdx].end;
     document.querySelectorAll('#ledger .op').forEach(o=>{
       if(o.classList.contains('fut')) return;
       const a=parseFloat(o.dataset.amt);
       reel+=a;                          // solde réel = toutes les opérations passées, cochées ou non
       if(o.classList.contains('pt')) pointe+=a;  // solde pointé = seulement les rapprochées
     });
-    let prev=pointe;  // le prévu part du solde POINTÉ (pas du réel) : décocher une opération passée se répercute sur la projection
-    // le prévu compte TOUTES les échéances futures actives, cochées ou non (une échéance cochée
-    // n'est plus "future" : elle est passée dans le pointé via "Marquer comme arrivée en banque")
-    futEls().forEach(o=>{
-      if(o.dataset.date && o.dataset.date<=jend) prev+=parseFloat(o.dataset.amt);
-    });
+    // "Prévu" = ce qu'il reste à vivre une fois TOUTES les échéances actives déduites, sans limite
+    // de date (contrairement à "Solde prévu à une date" ci-dessous, qui reste un outil séparé,
+    // borné à la date choisie) — cochées ou non, sauf celles désactivées via l'Échéancier
+    let prev=pointe;
+    futEls().forEach(o=>{ prev+=parseFloat(o.dataset.amt); });
     document.getElementById('sPointe').textContent=fmt(pointe);
     const pv=document.getElementById('sPrev');
     pv.textContent=fmt(prev);
@@ -910,6 +909,9 @@
     acctRowBig.textContent=fmt(reel);
     acctRowSub.textContent='pointé '+pointe.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
     acctPointeChip.textContent=fmt(pointe);
+    // accueil : même "Prévu" illimité que le pied de page Opérations (pas la version bornée à une date)
+    acctPrevLbl.textContent='Prévu';
+    acctPrevChip.textContent=fmt(prev);
     updateProj();
     updateMiles();
   }
@@ -934,9 +936,6 @@
     projBal.style.color = bal<0 ? 'var(--neg)' : (bal<200 ? 'var(--pending)' : '');
     const p=dv.split('-');
     projSub.textContent = n+' échéance'+(n>1?'s':'')+' compt'+(n>1?'ées':'ée')+' jusqu\'au '+p[2]+'/'+p[1]+'/'+p[0];
-    // page d'accueil : même source de vérité que le sélecteur de date ci-dessus (plus de calcul séparé par mois)
-    acctPrevLbl.textContent='Prévu '+p[2]+'/'+p[1];
-    acctPrevChip.textContent=balTxt;
     saveProjDate(dv);
   }
   projDate.addEventListener('input',()=>{ updateProj(); updateMiles(); });
@@ -1405,9 +1404,7 @@
       document.querySelectorAll('#ledger .op.fut').forEach(op=>{
         const t1=op.querySelector('.t1')?.textContent.trim();
         if(t1!==name) return;
-        op.classList.toggle('pt', on);
-        const chk=op.querySelector('.chk'); if(chk) chk.setAttribute('aria-checked', on);
-        dbSetPointee(op);
+        op.classList.toggle('inact', !on);
       });
       recompute();
     });
