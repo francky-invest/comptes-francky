@@ -1344,6 +1344,10 @@
         // sur une échéance future, cocher = "elle vient d'arriver en banque" : elle quitte le
         // futur et rejoint le pointé pour de vrai (même effet que le menu ⋮ "Marquer comme arrivée")
         op.classList.remove('fut'); op.classList.add('pt');
+        // une opération confirmée arrivée en banque est un fait, plus une simple prévision : elle
+        // compte toujours, même si l'interrupteur de sa récurrence dans l'Échéancier est décoché
+        // (sinon coché restait "sans effet visible" sur Prévu — bug remonté par Francky le 04/08/2026)
+        op.classList.remove('inact');
         chk.setAttribute('aria-checked','true');
         await dbMarkArrived(op);
         applyMonthFilter();
@@ -1352,6 +1356,11 @@
         // encore passée : on annule la transition plutôt qu'un simple toggle, sinon elle devient
         // orpheline (ni à venir, ni pointée) et disparaît de tous les soldes
         op.classList.remove('pt'); op.classList.add('fut');
+        // redevenue une simple prévision : elle redoit à nouveau suivre l'interrupteur de sa
+        // récurrence dans l'Échéancier, pas rester comptée par défaut
+        const recurRow=findRecurRowForOp(op);
+        const swOn = recurRow ? loadSwitchState(recurRowName(recurRow)) : null;
+        op.classList.toggle('inact', swOn===false);
         chk.setAttribute('aria-checked','false');
         await dbUnmarkArrived(op);
         applyMonthFilter();
