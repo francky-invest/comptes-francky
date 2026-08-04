@@ -354,7 +354,7 @@
           <span class="lbl">Compte de dépôts LCL · solde réel</span>
           <div><span class="big" id="acctBig">102,12</span><span class="cur">€</span></div>
           <div class="hero-row">
-            <div class="chip"><div class="k"><span class="dot g"></span>Pointé</div><div class="v" id="acctPointeChip">200,28 €</div></div>
+            <div class="chip"><div class="k"><span class="dot g"></span>Solde en banque</div><div class="v" id="acctPointeChip">200,28 €</div></div>
             <div class="chip"><div class="k"><span class="dot a"></span><span id="acctPrevLbl">Prévu 31/07</span></div><div class="v" id="acctPrevChip">1 426,48 €</div></div>
           </div>
         </div>
@@ -364,11 +364,11 @@
           <button class="acct" onclick="go('ops')">
             <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 21h18M4 10h16M5 10 12 4l7 6M6 10v11M18 10v11M10 10v11M14 10v11"/></svg></span>
             <span class="mid"><div class="nm">Compte de dépôts LCL</div><div class="sub"><span class="dot g"></span>Synchronisé en direct</div></span>
-            <span class="amt"><div class="r" id="acctRowBig">102,12 €</div><div class="p" id="acctRowSub">pointé 200,28</div></span>
+            <span class="amt"><div class="r" id="acctRowBig">102,12 €</div><div class="p" id="acctRowSub">en banque 200,28</div></span>
           </button>
           <!-- un seul compte bancaire pour l'instant -->
         </div>
-        <p class="note">Solde <b>réel</b> = toutes les opérations enregistrées (OFX + celles vérifiées en direct) · solde <b>pointé</b> = celles que tu as cochées (décoche une ligne dans Opérations pour voir la différence) · <b>prévu</b> = avec le salaire et les échéances à venir.</p>
+        <p class="note">Solde <b>réel</b> = toutes les opérations enregistrées (OFX + celles vérifiées en direct) · <b>solde en banque</b> = uniquement celles que tu as cochées (le vrai montant en banque) · <b>prévu</b> = solde en banque + échéances à venir jusqu'à la date choisie.</p>
       </section>
 
       <!-- ===== VUE OPERATIONS ===== -->
@@ -383,7 +383,7 @@
         </div>
 
         <div class="foot">
-          <div class="box pt"><div class="k">Solde pointé</div><div class="v" id="sPointe">83,12 €</div></div>
+          <div class="box pt"><div class="k">Solde en banque</div><div class="v" id="sPointe">83,12 €</div></div>
           <div class="box bank"><div class="k" id="footPrevLbl">Prévu</div><div class="v" id="sPrev">1 426,48 €</div></div>
         </div>
 
@@ -913,7 +913,7 @@
     pv.classList.toggle('warnv', prev<250);
     acctBig.textContent=reel.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
     acctRowBig.textContent=fmt(reel);
-    acctRowSub.textContent='pointé '+pointe.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    acctRowSub.textContent='en banque '+pointe.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
     acctPointeChip.textContent=fmt(pointe);
     updateProj();
     updateMiles();
