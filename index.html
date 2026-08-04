@@ -830,16 +830,23 @@
     syncInactFromSwitches();
     applyMonthFilter();
   }
-  // applique l'état actuel des interrupteurs de l'Échéancier (activer/désactiver une récurrence)
-  // aux échéances à venir fraîchement chargées — sans quoi une récurrence désactivée par défaut
-  // (ex. le salaire, exclu de "Prévu" tant qu'il n'est pas vraiment tombé) redeviendrait active à
-  // chaque rechargement, puisque les interrupteurs eux-mêmes ne sont pas persistés en base.
+  // état des interrupteurs de récurrence (Échéancier), persisté en localStorage — sans quoi un
+  // décochage manuel (ex. "Salaire" pour voir le Prévu hors salaire) revenait à son défaut codé en
+  // dur dans le HTML à chaque rechargement de l'appli, silencieusement, ce qui semblait "ne rien faire"
+  function loadSwitchState(name){ try{ const v=localStorage.getItem('cf_sw_'+name); return v===null?null:v==='1'; }catch(e){ return null; } }
+  function saveSwitchState(name, on){ try{ localStorage.setItem('cf_sw_'+name, on?'1':'0'); }catch(e){} }
+  // applique l'état des interrupteurs de l'Échéancier (activer/désactiver une récurrence) aux
+  // échéances à venir fraîchement chargées : reprend d'abord la valeur persistée (localStorage) si
+  // elle existe, sinon garde le défaut codé en dur dans le HTML pour cette récurrence
   function syncInactFromSwitches(){
     document.querySelectorAll('#recurIncCard .setrow .switch.swset, #recurExpCard .setrow .switch.swset').forEach(sw=>{
       const row=sw.closest('.setrow');
       const name=row?recurRowName(row):null;
       if(!name) return;
-      const on=sw.classList.contains('on');
+      const saved=loadSwitchState(name);
+      const on = saved===null ? sw.classList.contains('on') : saved;
+      sw.classList.toggle('on', on);
+      sw.setAttribute('aria-checked', on);
       document.querySelectorAll('#ledger .op.fut').forEach(op=>{
         if(op.querySelector('.t1')?.textContent.trim()===name) op.classList.toggle('inact', !on);
       });
@@ -1455,6 +1462,7 @@
       const row=s.closest('.setrow');
       const name=row?recurRowName(row):null;
       if(!name) return;
+      saveSwitchState(name, on);
       document.querySelectorAll('#ledger .op.fut').forEach(op=>{
         const t1=op.querySelector('.t1')?.textContent.trim();
         if(t1!==name) return;
