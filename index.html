@@ -896,11 +896,10 @@
       reel+=a;                          // solde réel = toutes les opérations passées, cochées ou non
       if(o.classList.contains('pt')) pointe+=a;  // solde pointé = seulement les rapprochées
     });
-    // "Prévu" = ce qu'il reste à vivre une fois TOUTES les échéances actives déduites, sans limite
-    // de date (contrairement à "Solde prévu à une date" ci-dessous, qui reste un outil séparé,
-    // borné à la date choisie) — cochées ou non, sauf celles désactivées via l'Échéancier
-    let prev=pointe;
-    futEls().forEach(o=>{ prev+=parseFloat(o.dataset.amt); });
+    // "Prévu" = solde pointé + échéances actives déduites/ajoutées jusqu'à la date choisie
+    // (même sélecteur que "Solde prévu à une date" — une seule source de vérité, affichée à la
+    // fois en pied de page Opérations et sur l'accueil, avec la date choisie en toutes lettres)
+    const prev=balanceAt(projDate.value).bal;
     document.getElementById('sPointe').textContent=fmt(pointe);
     const pv=document.getElementById('sPrev');
     pv.textContent=fmt(prev);
@@ -909,9 +908,6 @@
     acctRowBig.textContent=fmt(reel);
     acctRowSub.textContent='pointé '+pointe.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
     acctPointeChip.textContent=fmt(pointe);
-    // accueil : même "Prévu" illimité que le pied de page Opérations (pas la version bornée à une date)
-    acctPrevLbl.textContent='Prévu';
-    acctPrevChip.textContent=fmt(prev);
     updateProj();
     updateMiles();
   }
@@ -936,10 +932,14 @@
     projBal.style.color = bal<0 ? 'var(--neg)' : (bal<200 ? 'var(--pending)' : '');
     const p=dv.split('-');
     projSub.textContent = n+' échéance'+(n>1?'s':'')+' compt'+(n>1?'ées':'ée')+' jusqu\'au '+p[2]+'/'+p[1]+'/'+p[0];
+    // pied de page Opérations + chip accueil : même date, même chiffre, affichés partout
+    acctPrevLbl.textContent='Prévu '+p[2]+'/'+p[1];
+    footPrevLbl.textContent='Prévu '+p[2]+'/'+p[1];
+    acctPrevChip.textContent=balTxt;
     saveProjDate(dv);
   }
-  projDate.addEventListener('input',()=>{ updateProj(); updateMiles(); });
-  projDate.addEventListener('change',()=>{ updateProj(); updateMiles(); });
+  projDate.addEventListener('input',()=>{ recompute(); });
+  projDate.addEventListener('change',()=>{ recompute(); });
 
   // jalons rapides (onglet Échéancier) — même moteur, cliquer un jalon règle la date du haut
   const milesEls=[...document.querySelectorAll('.miles .mile')];
