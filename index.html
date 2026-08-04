@@ -966,7 +966,10 @@
       if(d<=TODAY){
         // déjà passée : ne compte que si rapprochée (même règle que le solde pointé)
         if(o.classList.contains('pt')) s+=parseFloat(o.dataset.amt);
-      } else if(!o.classList.contains('inact')){
+      } else {
+        // échéance à venir dont la date est ≤ la date choisie : elle serait déjà tombée d'ici là,
+        // donc toujours comptée, peu importe l'interrupteur "désactiver" de l'Échéancier (qui ne
+        // sert plus qu'à l'affichage grisé — demande explicite de Francky le 04/08/2026)
         s+=parseFloat(o.dataset.amt); n++;
       }
     });
