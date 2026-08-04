@@ -576,6 +576,7 @@
               <button class="cc"><span class="cdot" style="background:var(--pos)"></span>Allocations</button>
               <button class="cc"><span class="cdot" style="background:var(--pos)"></span>Remboursements</button>
             </div>
+            <button type="button" class="savebtn ghost" id="newCatBtn" style="margin-top:8px">+ Nouvelle catégorie</button>
           </div>
           <div class="grid2">
             <div class="field"><label>Date</label><input type="date" id="addDate" value="2026-07-24"></div>
@@ -648,8 +649,7 @@
           <div class="rule"><span class="kw">PAYPAL</span><span class="arw">→</span><span class="to">Achats éch.</span></div>
           <div class="rule"><span class="kw">ENKI</span><span class="arw">→</span><span class="to">Famille</span></div>
         </div>
-        <p class="note">À l'import, ces règles devinent la catégorie d'après le libellé. Tu peux en créer d'autres, et corriger à la main quand tu veux.</p>
-        <button class="savebtn ghost" id="newCatBtn">+ Nouvelle catégorie</button>
+        <p class="note">À l'import, ces règles devinent la catégorie d'après le libellé. Tu peux en créer d'autres, et corriger à la main quand tu veux. Pour ajouter une nouvelle catégorie, utilise le bouton <b>+ Nouvelle catégorie</b> dans l'écran <b>Nouvelle opération</b>.</p>
       </section>
 
     </div>
@@ -1550,9 +1550,12 @@
   const catPalette=['#6d4fd6','#c98a12','#3a63d6','#2b7fb8','#b5548f','#2f9e6b','#c9673f'];
   let catPaletteIdx=0;
   document.getElementById('newCatBtn').addEventListener('click',()=>{
+    // dans le formulaire Ajouter, le type par défaut suit le segment Dépense/Revenu déjà choisi
+    // (dans Réglages, avant ce bouton, il n'y avait pas de contexte -> restait sur "Dépense")
+    const defaultKind = segBtns[0]?.classList.contains('on') ? 'exp' : 'inc';
     openModal('Nouvelle catégorie',[
       {key:'name', label:'Nom', type:'text', placeholder:'Ex. Loisirs'},
-      {key:'kind', label:'Type', type:'select', options:[{value:'exp',label:'Dépense'},{value:'inc',label:'Revenu'}]}
+      {key:'kind', label:'Type', type:'select', value:defaultKind, options:[{value:'exp',label:'Dépense'},{value:'inc',label:'Revenu'}]}
     ], v=>{
       const name=v.name.trim();
       if(!name) return 'Donne un nom à la catégorie.';
@@ -1563,6 +1566,10 @@
       // persistance en base (avant : rien n'était sauvegardé, la catégorie disparaissait au redémarrage)
       sb.from('categories').insert({ nom:name, sens:isRevenu?'revenu':'depense', icone_key:color })
         .then(({error})=>{ if(error) console.error('insert categorie', error); });
+      // sélectionne aussitôt la nouvelle catégorie pour l'opération en cours de saisie
+      const chips = isRevenu ? catchipsInc : catchipsExp;
+      const newChip=[...chips.querySelectorAll('.cc')].find(c=>c.textContent.trim()===name);
+      if(newChip){ chips.querySelectorAll('.cc').forEach(x=>x.classList.remove('on')); newChip.classList.add('on'); }
       return true;
     });
   });
