@@ -679,6 +679,13 @@
   const sb=supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let currentUser=null, currentCompteId=null;
 
+  // vraie date du jour, en heure LOCALE (toISOString() donne l'UTC, décalé la nuit par rapport au calendrier
+  // de Francky) — déclarée tout en haut du script : balanceAt()/recompute() la lisent dès le premier rendu
+  // synchrone (avant tout accès Supabase), une déclaration plus tardive provoquait un ReferenceError
+  // (TDZ) qui interrompait silencieusement toute l'initialisation de la page.
+  const _now=new Date();
+  const TODAY=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
+
   const authGate=document.getElementById('authGate');
   const authTitle=document.getElementById('authTitle');
   const authEmail=document.getElementById('authEmail');
@@ -918,10 +925,19 @@
   const projBal=document.getElementById('projBal');
   const projSub=document.getElementById('projSub');
   function balanceAt(dateStr){
-    // même principe que recompute() : toutes les échéances futures actives comptent, cochées ou non
-    let s=computePointe(), n=0;
-    futEls().forEach(o=>{
-      if(o.dataset.date && o.dataset.date<=dateStr){ s+=parseFloat(o.dataset.amt); n++; }
+    // se base sur la date RÉELLE de chaque opération (jamais sur le fait qu'elle ait été depuis
+    // "marquée arrivée en banque") : cocher/décocher une échéance à venir change le solde pointé,
+    // mais ne doit jamais changer le solde prévu à une date, puisqu'elle y était déjà comptée
+    let s=OPENING, n=0;
+    document.querySelectorAll('#ledger .op').forEach(o=>{
+      const d=o.dataset.date;
+      if(!d || d>dateStr) return;
+      if(d<=TODAY){
+        // déjà passée : ne compte que si rapprochée (même règle que le solde pointé)
+        if(o.classList.contains('pt')) s+=parseFloat(o.dataset.amt);
+      } else if(!o.classList.contains('inact')){
+        s+=parseFloat(o.dataset.amt); n++;
+      }
     });
     return {bal:s, n};
   }
@@ -1192,10 +1208,6 @@
       renderCategoryRow(r.nom, r.icone_key||(r.sens==='revenu'?'var(--pos)':catPalette[catPaletteIdx++%catPalette.length]), r.sens==='revenu');
     });
   }
-  // vraie date du jour, en heure LOCALE (toISOString() donne l'UTC, décalé la nuit par rapport au calendrier de Francky)
-  const _now=new Date();
-  const TODAY=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
-
   // lit et valide le formulaire ; renvoie null (+ alerte) si invalide
   function readOpForm(){
     const dep=segBtns[0].classList.contains('on');
