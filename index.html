@@ -1096,17 +1096,6 @@
   const curSigns=[...document.querySelectorAll('[data-view="add"] .cur2')];
   const addChips=[...document.querySelectorAll('[data-view="add"] .cc')];
   const addSwitches=[...document.querySelectorAll('[data-view="add"] .switch')];
-  // Une échéance (date future) doit être comptée par défaut dans la projection — avant : "Pointée"
-  // restait toujours décochée tant qu'on n'y touchait pas soi-même, même pour une date future.
-  // pointeeTouched=true dès que l'utilisateur clique lui-même l'interrupteur -> on respecte son choix.
-  let pointeeTouched=false;
-  if(addSwitches[0]) addSwitches[0].addEventListener('click',()=>{ pointeeTouched=true; });
-  addDate.addEventListener('change',()=>{
-    if(pointeeTouched || !addSwitches[0]) return;
-    const isFuture=addDate.value>TODAY;
-    addSwitches[0].classList.toggle('on', isFuture);
-    addSwitches[0].setAttribute('aria-checked', isFuture);
-  });
   const catchipsExp=document.getElementById('catchipsExp');
   const catchipsInc=document.getElementById('catchipsInc');
   function setSign(dep){
@@ -1135,7 +1124,6 @@
     mode = mode||'edit';
     editingOp=op;
     formMode=mode;
-    pointeeTouched=true; // l'état vient explicitement de l'opération source, pas d'un choix par défaut
     const amt=parseFloat(op.dataset.amt), dep=amt<0;
     addAmt.value=Math.abs(amt).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
     setSign(dep);
@@ -1168,7 +1156,6 @@
     saveOpBtn.textContent="Enregistrer l'opération";
     addAmt.value='0,00'; setSign(true); addTiers.value='';
     selectChip(''); addDate.value=TODAY; addModeSel.value='CB';
-    pointeeTouched=false;
     addSwitches.forEach(s=>s.classList.remove('on'));
     delOpBtn.style.display='none';
     dupOpBtn.style.display='none';
