@@ -1569,6 +1569,26 @@
       input.id='mf_'+f.key;
       if(f.value!==undefined) input.value=f.value;
       wrap.appendChild(input);
+      // tout champ "categorie" (Nouvelle opération, Nouvelle échéance récurrente...) peut créer une
+      // catégorie à la volée, sans quitter le formulaire en cours ni perdre ce qui est déjà saisi
+      if(f.key==='categorie' && f.type==='select'){
+        const addBtn=document.createElement('button');
+        addBtn.type='button'; addBtn.textContent='+ Nouvelle catégorie';
+        addBtn.style.cssText='margin-top:6px;background:none;border:0;padding:0;color:var(--brand);font:600 12.5px var(--sans);cursor:pointer';
+        addBtn.addEventListener('click',()=>{
+          const saved={};
+          modalFields.querySelectorAll('[id^="mf_"]').forEach(el=>{ saved[el.id.slice(3)]=el.value; });
+          const defaultKind = saved.sens==='inc' ? 'inc' : 'exp';
+          openCategoryQuickCreate(name=>{
+            const restoredFields=fields.map(ff=>{
+              if(ff.key==='categorie') return Object.assign({},ff,{options:[...ff.options,{value:name,label:name}], value:name});
+              return saved[ff.key]!==undefined ? Object.assign({},ff,{value:saved[ff.key]}) : ff;
+            });
+            openModal(title, restoredFields, onSubmit);
+          }, defaultKind);
+        });
+        wrap.appendChild(addBtn);
+      }
       modalFields.appendChild(wrap);
     });
     modalSubmit=onSubmit;
@@ -1615,13 +1635,11 @@
   }
   monthPicker.addEventListener('click', openMonthPicker);
 
-  // + Nouvelle catégorie : nom + dépense/revenu, ajoutée à la liste ET utilisable dans le formulaire
+  // + Nouvelle catégorie : nom + dépense/revenu, ajoutée à la liste ET utilisable dans tout
+  // formulaire (Ajouter une opération, Nouvelle échéance récurrente...) via openCategoryQuickCreate
   const catPalette=['#6d4fd6','#c98a12','#3a63d6','#2b7fb8','#b5548f','#2f9e6b','#c9673f'];
   let catPaletteIdx=0;
-  document.getElementById('newCatBtn').addEventListener('click',()=>{
-    // dans le formulaire Ajouter, le type par défaut suit le segment Dépense/Revenu déjà choisi
-    // (dans Réglages, avant ce bouton, il n'y avait pas de contexte -> restait sur "Dépense")
-    const defaultKind = segBtns[0]?.classList.contains('on') ? 'exp' : 'inc';
+  function openCategoryQuickCreate(onCreated, defaultKind){
     openModal('Nouvelle catégorie',[
       {key:'name', label:'Nom', type:'text', placeholder:'Ex. Loisirs'},
       {key:'kind', label:'Type', type:'select', value:defaultKind, options:[{value:'exp',label:'Dépense'},{value:'inc',label:'Revenu'}]}
@@ -1635,12 +1653,20 @@
       // persistance en base (avant : rien n'était sauvegardé, la catégorie disparaissait au redémarrage)
       sb.from('categories').insert({ nom:name, sens:isRevenu?'revenu':'depense', icone_key:color })
         .then(({error})=>{ if(error) console.error('insert categorie', error); });
+      onCreated(name, isRevenu);
+      return true;
+    });
+  }
+  document.getElementById('newCatBtn').addEventListener('click',()=>{
+    // dans le formulaire Ajouter, le type par défaut suit le segment Dépense/Revenu déjà choisi
+    // (dans Réglages, avant ce bouton, il n'y avait pas de contexte -> restait sur "Dépense")
+    const defaultKind = segBtns[0]?.classList.contains('on') ? 'exp' : 'inc';
+    openCategoryQuickCreate((name, isRevenu)=>{
       // sélectionne aussitôt la nouvelle catégorie pour l'opération en cours de saisie
       const chips = isRevenu ? catchipsInc : catchipsExp;
       const newChip=[...chips.querySelectorAll('.cc')].find(c=>c.textContent.trim()===name);
       if(newChip){ chips.querySelectorAll('.cc').forEach(x=>x.classList.remove('on')); newChip.classList.add('on'); }
-      return true;
-    });
+    }, defaultKind);
   });
 
   // helpers de date/montant partagés
