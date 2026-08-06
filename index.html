@@ -1550,7 +1550,12 @@
       let input;
       if(f.type==='select'){
         input=document.createElement('select');
-        f.options.forEach(o=>{ const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; input.appendChild(opt); });
+        // pour un champ "categorie", toujours régénérer depuis CAT_ICONS à l'ouverture plutôt que
+        // d'utiliser la liste figée au chargement de la page (RECUR_FIELDS...) : sinon une catégorie
+        // créée en cours de session (ex. "Loisirs") reste invisible dans ce menu, alors qu'elle
+        // existe déjà (et bloque une re-création avec "cette catégorie existe déjà")
+        const opts = f.key==='categorie' ? Object.keys(CAT_ICONS).map(c=>({value:c,label:c})) : f.options;
+        opts.forEach(o=>{ const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; input.appendChild(opt); });
       } else {
         input=document.createElement('input');
         if(f.type==='number'){
@@ -1580,10 +1585,10 @@
           modalFields.querySelectorAll('[id^="mf_"]').forEach(el=>{ saved[el.id.slice(3)]=el.value; });
           const defaultKind = saved.sens==='inc' ? 'inc' : 'exp';
           openCategoryQuickCreate(name=>{
-            const restoredFields=fields.map(ff=>{
-              if(ff.key==='categorie') return Object.assign({},ff,{options:[...ff.options,{value:name,label:name}], value:name});
-              return saved[ff.key]!==undefined ? Object.assign({},ff,{value:saved[ff.key]}) : ff;
-            });
+            // les options du champ categorie sont régénérées à chaque ouverture (voir plus haut) :
+            // pas besoin de les recalculer ici, juste préselectionner la nouvelle catégorie
+            saved.categorie=name;
+            const restoredFields=fields.map(ff=> saved[ff.key]!==undefined ? Object.assign({},ff,{value:saved[ff.key]}) : ff);
             openModal(title, restoredFields, onSubmit);
           }, defaultKind);
         });
