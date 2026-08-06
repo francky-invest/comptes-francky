@@ -482,6 +482,7 @@
       <!-- ===== VUE ÉCHÉANCIER ===== -->
       <section class="view" data-view="echeancier">
         <p class="note" style="text-align:left;margin:0 2px">Toutes tes échéances futures : les <b>récurrences</b> (reviennent chaque mois, indéfiniment) et les <b>achats en plusieurs fois</b> (durée limitée, se terminent d'eux-mêmes). Elles alimentent le solde projeté et les cases à cocher de l'onglet <b>Opérations</b> — tout est lié.</p>
+        <button class="savebtn ghost" id="newRecurBtnTop">+ Nouvelle échéance récurrente</button>
 
         <div class="sec-h"><h3>Jalons rapides</h3></div>
         <div class="miles">
@@ -511,7 +512,6 @@
           <div class="setrow"><span class="ico" style="background:var(--surface-3);color:var(--text-dim)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg></span><span class="nm">Assurances LCL<small>Mensuel · le 19 · 3,00 + 2,00</small></span><span class="val" style="color:var(--neg);font-weight:700">−5,00</span><span class="switch on swset" role="switch" aria-checked="true"></span></div>
           <div class="setrow"><span class="ico" style="background:#E1F0FA;color:#2b7fb8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4 3 7 7 9 4-2 7-5 7-9V6l-7-3Z"/></svg></span><span class="nm">Vir. Trade Republic<small>Mensuel · ~le 9 · vers ton PEA</small></span><span class="val" style="color:var(--neg);font-weight:700">−50,00</span><span class="switch on swset" role="switch" aria-checked="true"></span></div>
         </div>
-        <button class="savebtn ghost" id="newRecurBtn">+ Nouvelle échéance récurrente</button>
 
         <div class="sec-h"><h3>Achats échelonnés en cours</h3></div>
         <div class="card ledger" id="achatsEchCard">
@@ -1873,7 +1873,7 @@
   document.querySelectorAll('#recurIncCard .setrow, #recurExpCard .setrow').forEach(wireRecurRow);
   recomputeRecurTotals(); // recalcule les totaux d'en-tête au chargement (au cas où le HTML statique dérive)
 
-  document.getElementById('newRecurBtn').addEventListener('click',()=>{
+  document.getElementById('newRecurBtnTop').addEventListener('click',()=>{
     openModal('Nouvelle échéance récurrente', RECUR_FIELDS, v=>applyRecurrenceForm(v,null));
   });
 </script>
