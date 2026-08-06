@@ -814,7 +814,7 @@
   async function dbInsertRecurOp(recurId, f){
     if(!currentCompteId) return;
     const { error } = await sb.from('operations').insert({
-      compte_id: currentCompteId, tiers: f.tiers, montant: f.amt, date: f.dateVal,
+      compte_id: currentCompteId, tiers: f.tiers, montant: f.amt, date: f.dateVal, mode: f.modeVal,
       pointee: f.pointee, is_future: f.isFuture, categorie_nom: f.catName, recurrence_id: recurId
     });
     if(error) console.error('dbInsertRecurOp', error);
@@ -1755,6 +1755,7 @@
     {key:'categorie', label:'Catégorie', type:'select', options:Object.keys(CAT_ICONS).map(c=>({value:c,label:c}))},
     {key:'montant', label:'Montant (€)', type:'number', value:'10'},
     {key:'date1', label:'Date de la 1ère échéance', type:'date', min:'2026-07-24', value:'2026-07-24'},
+    {key:'mode', label:'Mode', type:'select', value:'PRL', options:[{value:'CB',label:'CB'},{value:'PRL',label:'Prélèvement'},{value:'VIR',label:'Virement'},{value:'CHQ',label:'Chèque'},{value:'ESP',label:'Espèces'}]},
     {key:'duree', label:'Durée', type:'select', options:[{value:'indef',label:'Indéfinie'},{value:'once',label:'Une seule fois'},{value:'limitee',label:'Limitée à un nombre de mois'}]},
     {key:'nmois', label:'Si limitée : nombre de mois', type:'number', inputmode:'numeric', value:'3'}
   ];
@@ -1783,6 +1784,7 @@
     row.innerHTML='<span class="ico" style="background:'+icon.bg+';color:'+icon.color+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+icon.svg+'</svg></span><span class="nm">'+nom+'<small>'+catName+' · '+(duree==='indef'?'le '+jour:'le '+jour+' · '+durTxt)+'</small></span><span class="val" style="color:'+col+';font-weight:700">'+(isRevenu?'+':'−')+eur(montant)+'</span><span class="switch on swset" role="switch" aria-checked="true"></span>';
     row.dataset.nom=nom; row.dataset.sens=v.sens; row.dataset.categorie=catName;
     row.dataset.montant=montant; row.dataset.date1=v.date1; row.dataset.duree=duree; row.dataset.nmois=nmois;
+    row.dataset.mode=v.mode||'PRL';
     if(recurId) row.dataset.recurId=recurId;
 
     const targetCard=document.getElementById(isRevenu?'recurIncCard':'recurExpCard');
@@ -1830,7 +1832,7 @@
       const isoDate=iso(dt), monthId=isoDate.slice(0,7);
       if(!MONTH_IDS.includes(monthId)) continue;
       insertFutureOp(monthId,isoDate,amt,nom,ddmm(dt)+' · '+catName,icon.bg,icon.color,icon.svg);
-      await dbInsertRecurOp(newRecurId, {tiers:nom, amt, dateVal:isoDate, pointee:true, isFuture:true, catName});
+      await dbInsertRecurOp(newRecurId, {tiers:nom, amt, dateVal:isoDate, pointee:true, isFuture:true, catName, modeVal:v.mode});
     }
     applyMonthFilter();
     return true;
